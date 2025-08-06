@@ -1,7 +1,544 @@
-<!DOCTYPE html>
-<html>
-<body>
-<h1>Hello World</h1>
-<p>I'm hosted with GitHub Pages.</p>
-</body>
-</html>
+import React, { useState, useEffect } from 'react';
+import { MapPin, Plus, Search, Clock, User, Phone, MessageCircle, Camera, Heart, Star } from 'lucide-react';
+
+const FoodSharingApp = () => {
+  const [currentView, setCurrentView] = useState('browse'); // browse, add, detail
+  const [listings, setListings] = useState([]);
+  const [selectedListing, setSelectedListing] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [searchRadius, setSearchRadius] = useState(5);
+  
+  // Form states
+  const [newListing, setNewListing] = useState({
+    title: '',
+    description: '',
+    image: null,
+    imagePreview: null,
+    expiryDate: '',
+    location: '',
+    coords: null,
+    contactInfo: ''
+  });
+
+  // Sample data
+  useEffect(() => {
+    const sampleListings = [
+      {
+        id: 1,
+        title: "Verdure fresche miste",
+        description: "Insalata, pomodori e zucchine dal mio orto. Raccolte stamattina ma ne ho troppe!",
+        image: "🥬",
+        expiryDate: "2024-08-07",
+        location: "Via Roma 123, Bari",
+        coords: { lat: 41.1171, lng: 16.8719 },
+        contactInfo: "Maria - 339 123 4567",
+        postedBy: "Maria G.",
+        postedDate: "2024-08-06",
+        candidates: [],
+        distance: 0.8
+      },
+      {
+        id: 2,
+        title: "Pane di altamura",
+        description: "Pane fresco fatto in casa, ne ho fatto troppo per la famiglia. Ancora caldo!",
+        image: "🍞",
+        expiryDate: "2024-08-08",
+        location: "Corso Vittorio Emanuele 45, Bari",
+        coords: { lat: 41.1177, lng: 16.8512 },
+        contactInfo: "Giuseppe - 347 987 6543",
+        postedBy: "Giuseppe R.",
+        postedDate: "2024-08-06",
+        candidates: [{ name: "Anna M.", time: "30 min fa" }],
+        distance: 1.2
+      },
+      {
+        id: 3,
+        title: "Frutta di stagione",
+        description: "Pesche, albicocche e fichi. Mature al punto giusto ma vanno consumate subito.",
+        image: "🍑",
+        expiryDate: "2024-08-07",
+        location: "Piazza Aldo Moro 12, Bari",
+        coords: { lat: 41.1089, lng: 16.8864 },
+        contactInfo: "Francesco - 334 567 8901",
+        postedBy: "Francesco L.",
+        postedDate: "2024-08-05",
+        candidates: [],
+        distance: 2.1
+      }
+    ];
+    setListings(sampleListings);
+    
+    // Simulate getting user location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+      });
+    }
+  }, []);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setNewListing({
+          ...newListing,
+          image: file,
+          imagePreview: e.target.result
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmitListing = () => {
+    if (!newListing.title || !newListing.description || !newListing.expiryDate || !newListing.location || !newListing.contactInfo) {
+      alert('Per favore compila tutti i campi obbligatori');
+      return;
+    }
+    const newId = listings.length + 1;
+    const listing = {
+      id: newId,
+      ...newListing,
+      postedBy: "Tu",
+      postedDate: new Date().toISOString().split('T')[0],
+      candidates: [],
+      distance: 0,
+      coords: userLocation || { lat: 41.1171, lng: 16.8719 }
+    };
+    
+    setListings([listing, ...listings]);
+    setNewListing({
+      title: '',
+      description: '',
+      image: null,
+      imagePreview: null,
+      expiryDate: '',
+      location: '',
+      coords: null,
+      contactInfo: ''
+    });
+    setCurrentView('browse');
+  };
+
+  const handleCandidateApplication = (listingId) => {
+    setListings(listings.map(listing => {
+      if (listing.id === listingId) {
+        const newCandidate = { 
+          name: "Tu", 
+          time: "Appena ora" 
+        };
+        return {
+          ...listing,
+          candidates: [...listing.candidates, newCandidate]
+        };
+      }
+      return listing;
+    }));
+  };
+
+  const formatTimeLeft = (expiryDate) => {
+    const now = new Date();
+    const expiry = new Date(expiryDate);
+    const diffTime = expiry - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Scade oggi";
+    if (diffDays === 1) return "Scade domani";
+    if (diffDays > 1) return `Scade tra ${diffDays} giorni`;
+    return "Scaduto";
+  };
+
+  const getFilteredListings = () => {
+    return listings.filter(listing => listing.distance <= searchRadius);
+  };
+
+  // Browse View
+  const BrowseView = () => (
+    <div className="space-y-6">
+      {/* Search Header */}
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-6 rounded-xl">
+        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+          <Heart className="h-6 w-6" />
+          Trova cibo vicino a te
+        </h2>
+        
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-sm opacity-90">
+            <MapPin className="h-4 w-4" />
+            <span>Bari, Puglia</span>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <Search className="h-5 w-5 opacity-75" />
+            <div className="flex-1">
+              <label className="block text-sm mb-2">Raggio di ricerca: {searchRadius} km</label>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                value={searchRadius}
+                onChange={(e) => setSearchRadius(parseInt(e.target.value))}
+                className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
+          <div className="text-2xl font-bold text-green-600">{getFilteredListings().length}</div>
+          <div className="text-sm text-gray-600">Annunci vicini</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
+          <div className="text-2xl font-bold text-blue-600">127</div>
+          <div className="text-sm text-gray-600">Kg salvati</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
+          <div className="text-2xl font-bold text-orange-600">43</div>
+          <div className="text-sm text-gray-600">Utenti attivi</div>
+        </div>
+      </div>
+
+      {/* Listings */}
+      <div className="space-y-4">
+        {getFilteredListings().map(listing => (
+          <div
+            key={listing.id}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => {
+              setSelectedListing(listing);
+              setCurrentView('detail');
+            }}
+          >
+            <div className="flex gap-4">
+              <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-3xl border-2 border-gray-200">
+                {typeof listing.image === 'string' ? listing.image : '📷'}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-gray-900 text-lg">{listing.title}</h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <MapPin className="h-4 w-4" />
+                    <span>{listing.distance} km</span>
+                  </div>
+                </div>
+                
+                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{listing.description}</p>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1 text-sm text-red-600">
+                      <Clock className="h-4 w-4" />
+                      <span className="font-medium">{formatTimeLeft(listing.expiryDate)}</span>
+                    </div>
+                    
+                    {listing.candidates.length > 0 && (
+                      <div className="flex items-center gap-1 text-sm text-blue-600">
+                        <User className="h-4 w-4" />
+                        <span>{listing.candidates.length} interessat{listing.candidates.length === 1 ? 'o' : 'i'}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="text-sm text-gray-500">
+                    da {listing.postedBy}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {getFilteredListings().length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">🔍</div>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">Nessun annuncio nelle vicinanze</h3>
+          <p className="text-gray-500">Prova ad aumentare il raggio di ricerca o aggiungi tu il primo annuncio!</p>
+        </div>
+      )}
+    </div>
+  );
+
+  // Add Listing View
+  const AddListingView = () => (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl">
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <Plus className="h-6 w-6" />
+          Condividi cibo
+        </h2>
+        <p className="mt-2 opacity-90">Aiuta a ridurre lo spreco alimentare condividendo quello che non riesci a consumare</p>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Titolo dell'annuncio</label>
+          <input
+            type="text"
+            required
+            value={newListing.title}
+            onChange={(e) => setNewListing({...newListing, title: e.target.value})}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="es. Verdure fresche dal giardino"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Descrizione</label>
+          <textarea
+            required
+            value={newListing.description}
+            onChange={(e) => setNewListing({...newListing, description: e.target.value})}
+            rows={3}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Descrivi brevemente cosa condividi e in che condizioni si trova..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Foto</label>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+            {newListing.imagePreview ? (
+              <div className="space-y-4">
+                <img 
+                  src={newListing.imagePreview} 
+                  alt="Preview" 
+                  className="mx-auto h-32 w-32 object-cover rounded-lg"
+                />
+                <button
+                  type="button"
+                  onClick={() => setNewListing({...newListing, image: null, imagePreview: null})}
+                  className="text-red-600 text-sm hover:text-red-700"
+                >
+                  Rimuovi foto
+                </button>
+              </div>
+            ) : (
+              <div>
+                <Camera className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <label className="cursor-pointer">
+                  <span className="text-blue-600 font-medium hover:text-blue-700">Carica una foto</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-gray-500 text-sm mt-2">oppure trascina qui il file</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Data di scadenza</label>
+          <input
+            type="date"
+            required
+            value={newListing.expiryDate}
+            onChange={(e) => setNewListing({...newListing, expiryDate: e.target.value})}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            min={new Date().toISOString().split('T')[0]}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Indirizzo di ritiro</label>
+          <input
+            type="text"
+            required
+            value={newListing.location}
+            onChange={(e) => setNewListing({...newListing, location: e.target.value})}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="es. Via Roma 123, Bari"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Contatto</label>
+          <input
+            type="text"
+            required
+            value={newListing.contactInfo}
+            onChange={(e) => setNewListing({...newListing, contactInfo: e.target.value})}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Il tuo nome e telefono (es. Mario - 339 123 4567)"
+          />
+        </div>
+
+        <button
+          onClick={handleSubmitListing}
+          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-6 rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-colors flex items-center justify-center gap-2"
+        >
+          <Plus className="h-5 w-5" />
+          Pubblica annuncio
+        </button>
+      </div>
+    </div>
+  );
+
+  // Detail View
+  const DetailView = () => (
+    selectedListing && (
+      <div className="space-y-6">
+        <button
+          onClick={() => setCurrentView('browse')}
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
+        >
+          ← Torna agli annunci
+        </button>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="h-64 bg-gray-100 flex items-center justify-center text-6xl border-b border-gray-200">
+            {typeof selectedListing.image === 'string' ? selectedListing.image : '📷'}
+          </div>
+
+          <div className="p-6 space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedListing.title}</h1>
+              <p className="text-gray-600 leading-relaxed">{selectedListing.description}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <div className="flex items-center gap-2 text-red-700 mb-1">
+                  <Clock className="h-5 w-5" />
+                  <span className="font-medium">Scadenza</span>
+                </div>
+                <p className="text-red-800 font-semibold">{formatTimeLeft(selectedListing.expiryDate)}</p>
+                <p className="text-sm text-red-600 mt-1">{selectedListing.expiryDate}</p>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 text-blue-700 mb-1">
+                  <MapPin className="h-5 w-5" />
+                  <span className="font-medium">Distanza</span>
+                </div>
+                <p className="text-blue-800 font-semibold">{selectedListing.distance} km da te</p>
+                <p className="text-sm text-blue-600 mt-1">{selectedListing.location}</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 text-gray-700 mb-2">
+                <User className="h-5 w-5" />
+                <span className="font-medium">Informazioni contatto</span>
+              </div>
+              <p className="text-gray-800">{selectedListing.contactInfo}</p>
+            </div>
+
+            {selectedListing.candidates.length > 0 && (
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div className="flex items-center gap-2 text-orange-700 mb-2">
+                  <User className="h-5 w-5" />
+                  <span className="font-medium">
+                    {selectedListing.candidates.length} utent{selectedListing.candidates.length === 1 ? 'e' : 'i'} interessat{selectedListing.candidates.length === 1 ? 'o' : 'i'}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {selectedListing.candidates.map((candidate, index) => (
+                    <div key={index} className="flex justify-between items-center text-sm">
+                      <span className="text-orange-800 font-medium">{candidate.name}</span>
+                      <span className="text-orange-600">{candidate.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => handleCandidateApplication(selectedListing.id)}
+                disabled={selectedListing.candidates.some(c => c.name === "Tu")}
+                className={`flex-1 py-3 px-6 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors ${
+                  selectedListing.candidates.some(c => c.name === "Tu")
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
+                }`}
+              >
+                <Heart className="h-5 w-5" />
+                {selectedListing.candidates.some(c => c.name === "Tu") ? 'Già candidato' : 'Candidati per il ritiro'}
+              </button>
+
+              <button className="px-6 py-3 border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2">
+                <MessageCircle className="h-5 w-5" />
+                Contatta
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">F</span>
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">FoodShare</h1>
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <Star className="h-4 w-4 text-yellow-500 fill-current" />
+            <span className="text-sm text-gray-600">4.8</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <main className="max-w-md mx-auto p-4">
+        {currentView === 'browse' && <BrowseView />}
+        {currentView === 'add' && <AddListingView />}
+        {currentView === 'detail' && <DetailView />}
+      </main>
+
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+        <div className="max-w-md mx-auto flex">
+          <button
+            onClick={() => setCurrentView('browse')}
+            className={`flex-1 py-4 flex flex-col items-center gap-1 transition-colors ${
+              currentView === 'browse'
+                ? 'text-green-600 bg-green-50'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <Search className="h-6 w-6" />
+            <span className="text-xs font-medium">Cerca</span>
+          </button>
+
+          <button
+            onClick={() => setCurrentView('add')}
+            className={`flex-1 py-4 flex flex-col items-center gap-1 transition-colors ${
+              currentView === 'add'
+                ? 'text-green-600 bg-green-50'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <Plus className="h-6 w-6" />
+            <span className="text-xs font-medium">Aggiungi</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Bottom spacing for navigation */}
+      <div className="h-20"></div>
+    </div>
+  );
+};
+
+export default FoodSharingApp;
