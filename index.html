@@ -1,544 +1,651 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Plus, Search, Clock, User, Phone, MessageCircle, Camera, Heart, Star } from 'lucide-react';
-
-const FoodSharingApp = () => {
-  const [currentView, setCurrentView] = useState('browse'); // browse, add, detail
-  const [listings, setListings] = useState([]);
-  const [selectedListing, setSelectedListing] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
-  const [searchRadius, setSearchRadius] = useState(5);
-  
-  // Form states
-  const [newListing, setNewListing] = useState({
-    title: '',
-    description: '',
-    image: null,
-    imagePreview: null,
-    expiryDate: '',
-    location: '',
-    coords: null,
-    contactInfo: ''
-  });
-
-  // Sample data
-  useEffect(() => {
-    const sampleListings = [
-      {
-        id: 1,
-        title: "Verdure fresche miste",
-        description: "Insalata, pomodori e zucchine dal mio orto. Raccolte stamattina ma ne ho troppe!",
-        image: "🥬",
-        expiryDate: "2024-08-07",
-        location: "Via Roma 123, Bari",
-        coords: { lat: 41.1171, lng: 16.8719 },
-        contactInfo: "Maria - 339 123 4567",
-        postedBy: "Maria G.",
-        postedDate: "2024-08-06",
-        candidates: [],
-        distance: 0.8
-      },
-      {
-        id: 2,
-        title: "Pane di altamura",
-        description: "Pane fresco fatto in casa, ne ho fatto troppo per la famiglia. Ancora caldo!",
-        image: "🍞",
-        expiryDate: "2024-08-08",
-        location: "Corso Vittorio Emanuele 45, Bari",
-        coords: { lat: 41.1177, lng: 16.8512 },
-        contactInfo: "Giuseppe - 347 987 6543",
-        postedBy: "Giuseppe R.",
-        postedDate: "2024-08-06",
-        candidates: [{ name: "Anna M.", time: "30 min fa" }],
-        distance: 1.2
-      },
-      {
-        id: 3,
-        title: "Frutta di stagione",
-        description: "Pesche, albicocche e fichi. Mature al punto giusto ma vanno consumate subito.",
-        image: "🍑",
-        expiryDate: "2024-08-07",
-        location: "Piazza Aldo Moro 12, Bari",
-        coords: { lat: 41.1089, lng: 16.8864 },
-        contactInfo: "Francesco - 334 567 8901",
-        postedBy: "Francesco L.",
-        postedDate: "2024-08-05",
-        candidates: [],
-        distance: 2.1
-      }
-    ];
-    setListings(sampleListings);
-    
-    // Simulate getting user location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-      });
-    }
-  }, []);
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setNewListing({
-          ...newListing,
-          image: file,
-          imagePreview: e.target.result
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmitListing = () => {
-    if (!newListing.title || !newListing.description || !newListing.expiryDate || !newListing.location || !newListing.contactInfo) {
-      alert('Per favore compila tutti i campi obbligatori');
-      return;
-    }
-    const newId = listings.length + 1;
-    const listing = {
-      id: newId,
-      ...newListing,
-      postedBy: "Tu",
-      postedDate: new Date().toISOString().split('T')[0],
-      candidates: [],
-      distance: 0,
-      coords: userLocation || { lat: 41.1171, lng: 16.8719 }
-    };
-    
-    setListings([listing, ...listings]);
-    setNewListing({
-      title: '',
-      description: '',
-      image: null,
-      imagePreview: null,
-      expiryDate: '',
-      location: '',
-      coords: null,
-      contactInfo: ''
-    });
-    setCurrentView('browse');
-  };
-
-  const handleCandidateApplication = (listingId) => {
-    setListings(listings.map(listing => {
-      if (listing.id === listingId) {
-        const newCandidate = { 
-          name: "Tu", 
-          time: "Appena ora" 
-        };
-        return {
-          ...listing,
-          candidates: [...listing.candidates, newCandidate]
-        };
-      }
-      return listing;
-    }));
-  };
-
-  const formatTimeLeft = (expiryDate) => {
-    const now = new Date();
-    const expiry = new Date(expiryDate);
-    const diffTime = expiry - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return "Scade oggi";
-    if (diffDays === 1) return "Scade domani";
-    if (diffDays > 1) return `Scade tra ${diffDays} giorni`;
-    return "Scaduto";
-  };
-
-  const getFilteredListings = () => {
-    return listings.filter(listing => listing.distance <= searchRadius);
-  };
-
-  // Browse View
-  const BrowseView = () => (
-    <div className="space-y-6">
-      {/* Search Header */}
-      <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-6 rounded-xl">
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-          <Heart className="h-6 w-6" />
-          Trova cibo vicino a te
-        </h2>
-        
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm opacity-90">
-            <MapPin className="h-4 w-4" />
-            <span>Bari, Puglia</span>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <Search className="h-5 w-5 opacity-75" />
-            <div className="flex-1">
-              <label className="block text-sm mb-2">Raggio di ricerca: {searchRadius} km</label>
-              <input
-                type="range"
-                min="1"
-                max="20"
-                value={searchRadius}
-                onChange={(e) => setSearchRadius(parseInt(e.target.value))}
-                className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Statistics */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
-          <div className="text-2xl font-bold text-green-600">{getFilteredListings().length}</div>
-          <div className="text-sm text-gray-600">Annunci vicini</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
-          <div className="text-2xl font-bold text-blue-600">127</div>
-          <div className="text-sm text-gray-600">Kg salvati</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
-          <div className="text-2xl font-bold text-orange-600">43</div>
-          <div className="text-sm text-gray-600">Utenti attivi</div>
-        </div>
-      </div>
-
-      {/* Listings */}
-      <div className="space-y-4">
-        {getFilteredListings().map(listing => (
-          <div
-            key={listing.id}
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => {
-              setSelectedListing(listing);
-              setCurrentView('detail');
-            }}
-          >
-            <div className="flex gap-4">
-              <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-3xl border-2 border-gray-200">
-                {typeof listing.image === 'string' ? listing.image : '📷'}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 text-lg">{listing.title}</h3>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <MapPin className="h-4 w-4" />
-                    <span>{listing.distance} km</span>
-                  </div>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodShare - Condividi cibo, riduci sprechi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .gradient-blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 gradient-bg rounded-lg flex items-center justify-center">
+                    <span class="text-white font-bold text-sm">F</span>
                 </div>
+                <h1 class="text-xl font-bold text-gray-900">FoodShare</h1>
+            </div>
+            
+            <div class="flex items-center gap-1">
+                <svg class="h-4 w-4 text-yellow-500 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                </svg>
+                <span class="text-sm text-gray-600">4.8</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-md mx-auto p-4 pb-24">
+        <!-- Browse View -->
+        <div id="browse-view">
+            <!-- Search Header -->
+            <div class="gradient-bg text-white p-6 rounded-xl mb-6">
+                <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                    Trova cibo vicino a te
+                </h2>
                 
-                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{listing.description}</p>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1 text-sm text-red-600">
-                      <Clock className="h-4 w-4" />
-                      <span className="font-medium">{formatTimeLeft(listing.expiryDate)}</span>
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 text-sm opacity-90">
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                            <circle cx="12" cy="10" r="3"/>
+                        </svg>
+                        <span>Bari, Puglia</span>
                     </div>
                     
-                    {listing.candidates.length > 0 && (
-                      <div className="flex items-center gap-1 text-sm text-blue-600">
-                        <User className="h-4 w-4" />
-                        <span>{listing.candidates.length} interessat{listing.candidates.length === 1 ? 'o' : 'i'}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="text-sm text-gray-500">
-                    da {listing.postedBy}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {getFilteredListings().length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">🔍</div>
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">Nessun annuncio nelle vicinanze</h3>
-          <p className="text-gray-500">Prova ad aumentare il raggio di ricerca o aggiungi tu il primo annuncio!</p>
-        </div>
-      )}
-    </div>
-  );
-
-  // Add Listing View
-  const AddListingView = () => (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Plus className="h-6 w-6" />
-          Condividi cibo
-        </h2>
-        <p className="mt-2 opacity-90">Aiuta a ridurre lo spreco alimentare condividendo quello che non riesci a consumare</p>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Titolo dell'annuncio</label>
-          <input
-            type="text"
-            required
-            value={newListing.title}
-            onChange={(e) => setNewListing({...newListing, title: e.target.value})}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="es. Verdure fresche dal giardino"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Descrizione</label>
-          <textarea
-            required
-            value={newListing.description}
-            onChange={(e) => setNewListing({...newListing, description: e.target.value})}
-            rows={3}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Descrivi brevemente cosa condividi e in che condizioni si trova..."
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Foto</label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-            {newListing.imagePreview ? (
-              <div className="space-y-4">
-                <img 
-                  src={newListing.imagePreview} 
-                  alt="Preview" 
-                  className="mx-auto h-32 w-32 object-cover rounded-lg"
-                />
-                <button
-                  type="button"
-                  onClick={() => setNewListing({...newListing, image: null, imagePreview: null})}
-                  className="text-red-600 text-sm hover:text-red-700"
-                >
-                  Rimuovi foto
-                </button>
-              </div>
-            ) : (
-              <div>
-                <Camera className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <label className="cursor-pointer">
-                  <span className="text-blue-600 font-medium hover:text-blue-700">Carica una foto</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-                <p className="text-gray-500 text-sm mt-2">oppure trascina qui il file</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Data di scadenza</label>
-          <input
-            type="date"
-            required
-            value={newListing.expiryDate}
-            onChange={(e) => setNewListing({...newListing, expiryDate: e.target.value})}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            min={new Date().toISOString().split('T')[0]}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Indirizzo di ritiro</label>
-          <input
-            type="text"
-            required
-            value={newListing.location}
-            onChange={(e) => setNewListing({...newListing, location: e.target.value})}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="es. Via Roma 123, Bari"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Contatto</label>
-          <input
-            type="text"
-            required
-            value={newListing.contactInfo}
-            onChange={(e) => setNewListing({...newListing, contactInfo: e.target.value})}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Il tuo nome e telefono (es. Mario - 339 123 4567)"
-          />
-        </div>
-
-        <button
-          onClick={handleSubmitListing}
-          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-6 rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-colors flex items-center justify-center gap-2"
-        >
-          <Plus className="h-5 w-5" />
-          Pubblica annuncio
-        </button>
-      </div>
-    </div>
-  );
-
-  // Detail View
-  const DetailView = () => (
-    selectedListing && (
-      <div className="space-y-6">
-        <button
-          onClick={() => setCurrentView('browse')}
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
-        >
-          ← Torna agli annunci
-        </button>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="h-64 bg-gray-100 flex items-center justify-center text-6xl border-b border-gray-200">
-            {typeof selectedListing.image === 'string' ? selectedListing.image : '📷'}
-          </div>
-
-          <div className="p-6 space-y-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedListing.title}</h1>
-              <p className="text-gray-600 leading-relaxed">{selectedListing.description}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                <div className="flex items-center gap-2 text-red-700 mb-1">
-                  <Clock className="h-5 w-5" />
-                  <span className="font-medium">Scadenza</span>
-                </div>
-                <p className="text-red-800 font-semibold">{formatTimeLeft(selectedListing.expiryDate)}</p>
-                <p className="text-sm text-red-600 mt-1">{selectedListing.expiryDate}</p>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 text-blue-700 mb-1">
-                  <MapPin className="h-5 w-5" />
-                  <span className="font-medium">Distanza</span>
-                </div>
-                <p className="text-blue-800 font-semibold">{selectedListing.distance} km da te</p>
-                <p className="text-sm text-blue-600 mt-1">{selectedListing.location}</p>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-2 text-gray-700 mb-2">
-                <User className="h-5 w-5" />
-                <span className="font-medium">Informazioni contatto</span>
-              </div>
-              <p className="text-gray-800">{selectedListing.contactInfo}</p>
-            </div>
-
-            {selectedListing.candidates.length > 0 && (
-              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                <div className="flex items-center gap-2 text-orange-700 mb-2">
-                  <User className="h-5 w-5" />
-                  <span className="font-medium">
-                    {selectedListing.candidates.length} utent{selectedListing.candidates.length === 1 ? 'e' : 'i'} interessat{selectedListing.candidates.length === 1 ? 'o' : 'i'}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {selectedListing.candidates.map((candidate, index) => (
-                    <div key={index} className="flex justify-between items-center text-sm">
-                      <span className="text-orange-800 font-medium">{candidate.name}</span>
-                      <span className="text-orange-600">{candidate.time}</span>
+                    <div class="flex items-center gap-4">
+                        <svg class="h-5 w-5 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                        <div class="flex-1">
+                            <label class="block text-sm mb-2">Raggio di ricerca: <span id="radius-value">5</span> km</label>
+                            <input
+                                type="range"
+                                id="search-radius"
+                                min="1"
+                                max="20"
+                                value="5"
+                                class="w-full h-2 bg-white bg-opacity-20 rounded-lg appearance-none cursor-pointer"
+                            />
+                        </div>
                     </div>
-                  ))}
                 </div>
-              </div>
-            )}
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => handleCandidateApplication(selectedListing.id)}
-                disabled={selectedListing.candidates.some(c => c.name === "Tu")}
-                className={`flex-1 py-3 px-6 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors ${
-                  selectedListing.candidates.some(c => c.name === "Tu")
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
-                }`}
-              >
-                <Heart className="h-5 w-5" />
-                {selectedListing.candidates.some(c => c.name === "Tu") ? 'Già candidato' : 'Candidati per il ritiro'}
-              </button>
-
-              <button className="px-6 py-3 border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2">
-                <MessageCircle className="h-5 w-5" />
-                Contatta
-              </button>
             </div>
-          </div>
-        </div>
-      </div>
-    )
-  );
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">F</span>
+            <!-- Statistics -->
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
+                    <div class="text-2xl font-bold text-green-600" id="nearby-count">3</div>
+                    <div class="text-sm text-gray-600">Annunci vicini</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
+                    <div class="text-2xl font-bold text-blue-600">127</div>
+                    <div class="text-sm text-gray-600">Kg salvati</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
+                    <div class="text-2xl font-bold text-orange-600">43</div>
+                    <div class="text-sm text-gray-600">Utenti attivi</div>
+                </div>
             </div>
-            <h1 className="text-xl font-bold text-gray-900">FoodShare</h1>
-          </div>
-          
-          <div className="flex items-center gap-1">
-            <Star className="h-4 w-4 text-yellow-500 fill-current" />
-            <span className="text-sm text-gray-600">4.8</span>
-          </div>
+
+            <!-- Listings Container -->
+            <div id="listings-container" class="space-y-4"></div>
+
+            <!-- No Results -->
+            <div id="no-results" class="text-center py-12 hidden">
+                <div class="text-6xl mb-4">🔍</div>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">Nessun annuncio nelle vicinanze</h3>
+                <p class="text-gray-500">Prova ad aumentare il raggio di ricerca o aggiungi tu il primo annuncio!</p>
+            </div>
         </div>
-      </header>
 
-      {/* Content */}
-      <main className="max-w-md mx-auto p-4">
-        {currentView === 'browse' && <BrowseView />}
-        {currentView === 'add' && <AddListingView />}
-        {currentView === 'detail' && <DetailView />}
-      </main>
+        <!-- Add Listing View -->
+        <div id="add-view" class="hidden">
+            <div class="gradient-blue text-white p-6 rounded-xl mb-6">
+                <h2 class="text-2xl font-bold flex items-center gap-2">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Condividi cibo
+                </h2>
+                <p class="mt-2 opacity-90">Aiuta a ridurre lo spreco alimentare condividendo quello che non riesci a consumare</p>
+            </div>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="max-w-md mx-auto flex">
-          <button
-            onClick={() => setCurrentView('browse')}
-            className={`flex-1 py-4 flex flex-col items-center gap-1 transition-colors ${
-              currentView === 'browse'
-                ? 'text-green-600 bg-green-50'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-            }`}
-          >
-            <Search className="h-6 w-6" />
-            <span className="text-xs font-medium">Cerca</span>
-          </button>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Titolo dell'annuncio</label>
+                    <input
+                        type="text"
+                        id="new-title"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="es. Verdure fresche dal giardino"
+                    />
+                </div>
 
-          <button
-            onClick={() => setCurrentView('add')}
-            className={`flex-1 py-4 flex flex-col items-center gap-1 transition-colors ${
-              currentView === 'add'
-                ? 'text-green-600 bg-green-50'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-            }`}
-          >
-            <Plus className="h-6 w-6" />
-            <span className="text-xs font-medium">Aggiungi</span>
-          </button>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Descrizione</label>
+                    <textarea
+                        id="new-description"
+                        rows="3"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Descrivi brevemente cosa condividi e in che condizioni si trova..."
+                    ></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Emoji rappresentativa</label>
+                    <div class="grid grid-cols-6 gap-2">
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🥬">🥬</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🍞">🍞</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🍎">🍎</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🍅">🍅</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🥕">🥕</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🧀">🧀</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🍝">🍝</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🥛">🥛</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🍗">🍗</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🐟">🐟</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🥐">🥐</button>
+                        <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🍰">🍰</button>
+                    </div>
+                    <input type="hidden" id="selected-emoji" value="🥬">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Data di scadenza</label>
+                    <input
+                        type="date"
+                        id="new-expiry"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Indirizzo di ritiro</label>
+                    <input
+                        type="text"
+                        id="new-location"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="es. Via Roma 123, Bari"
+                    />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Contatto</label>
+                    <input
+                        type="text"
+                        id="new-contact"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Il tuo nome e telefono (es. Mario - 339 123 4567)"
+                    />
+                </div>
+
+                <button
+                    id="submit-listing"
+                    class="w-full gradient-bg text-white py-3 px-6 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Pubblica annuncio
+                </button>
+            </div>
         </div>
-      </nav>
 
-      {/* Bottom spacing for navigation */}
-      <div className="h-20"></div>
-    </div>
-  );
-};
+        <!-- Detail View -->
+        <div id="detail-view" class="hidden">
+            <button id="back-btn" class="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6">
+                ← Torna agli annunci
+            </button>
 
-export default FoodSharingApp;
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div id="detail-image" class="h-64 bg-gray-100 flex items-center justify-center text-6xl border-b border-gray-200">
+                    📷
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <div>
+                        <h1 id="detail-title" class="text-2xl font-bold text-gray-900 mb-2"></h1>
+                        <p id="detail-description" class="text-gray-600 leading-relaxed"></p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                            <div class="flex items-center gap-2 text-red-700 mb-1">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12,6 12,12 16,14"/>
+                                </svg>
+                                <span class="font-medium">Scadenza</span>
+                            </div>
+                            <p id="detail-expiry" class="text-red-800 font-semibold"></p>
+                            <p id="detail-expiry-date" class="text-sm text-red-600 mt-1"></p>
+                        </div>
+
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <div class="flex items-center gap-2 text-blue-700 mb-1">
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                                <span class="font-medium">Distanza</span>
+                            </div>
+                            <p id="detail-distance" class="text-blue-800 font-semibold"></p>
+                            <p id="detail-location" class="text-sm text-blue-600 mt-1"></p>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div class="flex items-center gap-2 text-gray-700 mb-2">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                            <span class="font-medium">Informazioni contatto</span>
+                        </div>
+                        <p id="detail-contact" class="text-gray-800"></p>
+                    </div>
+
+                    <div id="candidates-section" class="bg-orange-50 p-4 rounded-lg border border-orange-200 hidden">
+                        <div class="flex items-center gap-2 text-orange-700 mb-2">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                            <span id="candidates-title" class="font-medium"></span>
+                        </div>
+                        <div id="candidates-list" class="space-y-2"></div>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button
+                            id="apply-btn"
+                            class="flex-1 py-3 px-6 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors gradient-bg text-white hover:opacity-90"
+                        >
+                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                            Candidati per il ritiro
+                        </button>
+
+                        <button class="px-6 py-3 border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                            Contatta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40">
+        <div class="max-w-md mx-auto flex">
+            <button
+                id="nav-browse"
+                class="flex-1 py-4 flex flex-col items-center gap-1 transition-colors text-green-600 bg-green-50"
+            >
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                <span class="text-xs font-medium">Cerca</span>
+            </button>
+
+            <button
+                id="nav-add"
+                class="flex-1 py-4 flex flex-col items-center gap-1 transition-colors text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+            >
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                <span class="text-xs font-medium">Aggiungi</span>
+            </button>
+        </div>
+    </nav>
+
+    <script>
+        // App State
+        let currentView = 'browse';
+        let selectedListing = null;
+        let searchRadius = 5;
+        let selectedEmoji = '🥬';
+        
+        // Sample data
+        let listings = [
+            {
+                id: 1,
+                title: "Verdure fresche miste",
+                description: "Insalata, pomodori e zucchine dal mio orto. Raccolte stamattina ma ne ho troppe!",
+                image: "🥬",
+                expiryDate: "2024-08-07",
+                location: "Via Roma 123, Bari",
+                contactInfo: "Maria - 339 123 4567",
+                postedBy: "Maria G.",
+                postedDate: "2024-08-06",
+                candidates: [],
+                distance: 0.8
+            },
+            {
+                id: 2,
+                title: "Pane di altamura",
+                description: "Pane fresco fatto in casa, ne ho fatto troppo per la famiglia. Ancora caldo!",
+                image: "🍞",
+                expiryDate: "2024-08-08",
+                location: "Corso Vittorio Emanuele 45, Bari",
+                contactInfo: "Giuseppe - 347 987 6543",
+                postedBy: "Giuseppe R.",
+                postedDate: "2024-08-06",
+                candidates: [{ name: "Anna M.", time: "30 min fa" }],
+                distance: 1.2
+            },
+            {
+                id: 3,
+                title: "Frutta di stagione",
+                description: "Pesche, albicocche e fichi. Mature al punto giusto ma vanno consumate subito.",
+                image: "🍑",
+                expiryDate: "2024-08-07",
+                location: "Piazza Aldo Moro 12, Bari",
+                contactInfo: "Francesco - 334 567 8901",
+                postedBy: "Francesco L.",
+                postedDate: "2024-08-05",
+                candidates: [],
+                distance: 2.1
+            }
+        ];
+
+        // Utility functions
+        function formatTimeLeft(expiryDate) {
+            const now = new Date();
+            const expiry = new Date(expiryDate);
+            const diffTime = expiry - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) return "Scade oggi";
+            if (diffDays === 1) return "Scade domani";
+            if (diffDays > 1) return `Scade tra ${diffDays} giorni`;
+            return "Scaduto";
+        }
+
+        function getFilteredListings() {
+            return listings.filter(listing => listing.distance <= searchRadius);
+        }
+
+        function showView(viewName) {
+            document.getElementById('browse-view').classList.add('hidden');
+            document.getElementById('add-view').classList.add('hidden');
+            document.getElementById('detail-view').classList.add('hidden');
+            
+            document.getElementById(viewName + '-view').classList.remove('hidden');
+            
+            // Update navigation
+            document.getElementById('nav-browse').className = 'flex-1 py-4 flex flex-col items-center gap-1 transition-colors text-gray-600 hover:text-gray-800 hover:bg-gray-50';
+            document.getElementById('nav-add').className = 'flex-1 py-4 flex flex-col items-center gap-1 transition-colors text-gray-600 hover:text-gray-800 hover:bg-gray-50';
+            
+            if (viewName === 'browse') {
+                document.getElementById('nav-browse').className = 'flex-1 py-4 flex flex-col items-center gap-1 transition-colors text-green-600 bg-green-50';
+            } else if (viewName === 'add') {
+                document.getElementById('nav-add').className = 'flex-1 py-4 flex flex-col items-center gap-1 transition-colors text-green-600 bg-green-50';
+            }
+            
+            currentView = viewName;
+            
+            if (viewName === 'browse') {
+                renderListings();
+            }
+        }
+
+        function renderListings() {
+            const container = document.getElementById('listings-container');
+            const filteredListings = getFilteredListings();
+            
+            document.getElementById('nearby-count').textContent = filteredListings.length;
+            
+            if (filteredListings.length === 0) {
+                container.innerHTML = '';
+                document.getElementById('no-results').classList.remove('hidden');
+                return;
+            }
+            
+            document.getElementById('no-results').classList.add('hidden');
+            
+            container.innerHTML = filteredListings.map(listing => `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow cursor-pointer card-hover" data-listing-id="${listing.id}">
+                    <div class="flex gap-4">
+                        <div class="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-3xl border-2 border-gray-200">
+                            ${listing.image}
+                        </div>
+                        
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start justify-between mb-2">
+                                <h3 class="font-semibold text-gray-900 text-lg">${listing.title}</h3>
+                                <div class="flex items-center gap-2 text-sm text-gray-500">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                        <circle cx="12" cy="10" r="3"/>
+                                    </svg>
+                                    <span>${listing.distance} km</span>
+                                </div>
+                            </div>
+                            
+                            <p class="text-gray-600 text-sm mb-3 line-clamp-2">${listing.description}</p>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="flex items-center gap-1 text-sm text-red-600">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <polyline points="12,6 12,12 16,14"/>
+                                        </svg>
+                                        <span class="font-medium">${formatTimeLeft(listing.expiryDate)}</span>
+                                    </div>
+                                    
+                                    ${listing.candidates.length > 0 ? `
+                                    <div class="flex items-center gap-1 text-sm text-blue-600">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="12" cy="7" r="4"/>
+                                        </svg>
+                                        <span>${listing.candidates.length} interessat${listing.candidates.length === 1 ? 'o' : 'i'}</span>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                                
+                                <div class="text-sm text-gray-500">
+                                    da ${listing.postedBy}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Add click listeners to listings
+            container.querySelectorAll('[data-listing-id]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const id = parseInt(el.dataset.listingId);
+                    selectedListing = listings.find(l => l.id === id);
+                    showDetailView();
+                });
+            });
+        }
+
+        function showDetailView() {
+            if (!selectedListing) return;
+            
+            document.getElementById('detail-image').textContent = selectedListing.image;
+            document.getElementById('detail-title').textContent = selectedListing.title;
+            document.getElementById('detail-description').textContent = selectedListing.description;
+            document.getElementById('detail-expiry').textContent = formatTimeLeft(selectedListing.expiryDate);
+            document.getElementById('detail-expiry-date').textContent = selectedListing.expiryDate;
+            document.getElementById('detail-distance').textContent = selectedListing.distance + ' km da te';
+            document.getElementById('detail-location').textContent = selectedListing.location;
+            document.getElementById('detail-contact').textContent = selectedListing.contactInfo;
+            
+            // Handle candidates
+            if (selectedListing.candidates.length > 0) {
+                const candidatesSection = document.getElementById('candidates-section');
+                const candidatesTitle = document.getElementById('candidates-title');
+                const candidatesList = document.getElementById('candidates-list');
+                
+                candidatesSection.classList.remove('hidden');
+                candidatesTitle.textContent = `${selectedListing.candidates.length} utent${selectedListing.candidates.length === 1 ? 'e' : 'i'} interessat${selectedListing.candidates.length === 1 ? 'o' : 'i'}`;
+                
+                candidatesList.innerHTML = selectedListing.candidates.map(candidate => `
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-orange-800 font-medium">${candidate.name}</span>
+                        <span class="text-orange-600">${candidate.time}</span>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('candidates-section').classList.add('hidden');
+            }
+            
+            // Handle apply button
+            const applyBtn = document.getElementById('apply-btn');
+            const hasApplied = selectedListing.candidates.some(c => c.name === "Tu");
+            
+            if (hasApplied) {
+                applyBtn.className = 'flex-1 py-3 px-6 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors bg-gray-200 text-gray-500 cursor-not-allowed';
+                applyBtn.innerHTML = `
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                    Già candidato
+                `;
+                applyBtn.disabled = true;
+            } else {
+                applyBtn.className = 'flex-1 py-3 px-6 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors gradient-bg text-white hover:opacity-90';
+                applyBtn.innerHTML = `
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                    Candidati per il ritiro
+                `;
+                applyBtn.disabled = false;
+            }
+            
+            showView('detail');
+        }
+
+        function handleApplication() {
+            if (selectedListing && !selectedListing.candidates.some(c => c.name === "Tu")) {
+                selectedListing.candidates.push({ name: "Tu", time: "Appena ora" });
+                showDetailView(); // Refresh the detail view
+                alert('Ti sei candidato con successo! Il proprietario ti contatterà presto.');
+            }
+        }
+
+        function submitListing() {
+            const title = document.getElementById('new-title').value.trim();
+            const description = document.getElementById('new-description').value.trim();
+            const expiry = document.getElementById('new-expiry').value;
+            const location = document.getElementById('new-location').value.trim();
+            const contact = document.getElementById('new-contact').value.trim();
+            
+            if (!title || !description || !expiry || !location || !contact) {
+                alert('Per favore compila tutti i campi obbligatori');
+                return;
+            }
+            
+            const newListing = {
+                id: listings.length + 1,
+                title,
+                description,
+                image: selectedEmoji,
+                expiryDate: expiry,
+                location,
+                contactInfo: contact,
+                postedBy: "Tu",
+                postedDate: new Date().toISOString().split('T')[0],
+                candidates: [],
+                distance: 0
+            };
+            
+            listings.unshift(newListing);
+            
+            // Clear form
+            document.getElementById('new-title').value = '';
+            document.getElementById('new-description').value = '';
+            document.getElementById('new-expiry').value = '';
+            document.getElementById('new-location').value = '';
+            document.getElementById('new-contact').value = '';
+            selectedEmoji = '🥬';
+            updateEmojiSelection();
+            
+            showView('browse');
+            alert('Annuncio pubblicato con successo!');
+        }
+
+        function updateEmojiSelection() {
+            document.querySelectorAll('.emoji-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-100', 'border-2', 'border-blue-500');
+                if (btn.dataset.emoji === selectedEmoji) {
+                    btn.classList.add('bg-blue-100', 'border-2', 'border-blue-500');
+                }
+            });
+            document.getElementById('selected-emoji').value = selectedEmoji;
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('new-expiry').min = today;
+            
+            // Navigation
+            document.getElementById('nav-browse').addEventListener('click', () => showView('browse'));
+            document.getElementById('nav-add').addEventListener('click', () => showView('add'));
+            document.getElementById('back-btn').addEventListener('click', () => showView('browse'));
+            
+            // Search radius
+            const radiusSlider = document.getElementById('search-radius');
+            const radiusValue = document.getElementById('radius-value');
+            
+            radiusSlider.addEventListener('input', (e) => {
+                searchRadius = parseInt(e.target.value);
+                radiusValue.textContent = searchRadius;
+                renderListings();
+            });
+            
+            // Emoji selection
+            document.querySelectorAll('.emoji-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    selectedEmoji = btn.dataset.emoji;
+                    updateEmojiSelection();
+                });
+            });
+            
+            // Submit listing
+            document.getElementById('submit-listing').addEventListener('click', submitListing);
+            
+            // Apply for listing
+            document.getElementById('apply-btn').addEventListener('click', handleApplication);
+            
+            // Initialize
+            updateEmojiSelection();
+            renderListings();
+        });
+    </script>
+</body>
+</html>
