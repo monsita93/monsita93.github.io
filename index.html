@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FoodShare - Condividi cibo, riduci sprechi</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -23,11 +29,26 @@
             overflow: hidden;
         }
         .hidden { display: none !important; }
+        .loading {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-50 font-sans">
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg flex items-center gap-3">
+            <div class="loading border-4 border-gray-200 border-t-green-500 rounded-full w-6 h-6"></div>
+            <span>Caricamento...</span>
+        </div>
+    </div>
+
     <!-- Header -->
-    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
         <div class="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 gradient-bg rounded-lg flex items-center justify-center">
@@ -90,17 +111,27 @@
             <!-- Statistics -->
             <div class="grid grid-cols-3 gap-4 mb-6">
                 <div class="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
-                    <div class="text-2xl font-bold text-green-600" id="nearby-count">3</div>
+                    <div class="text-2xl font-bold text-green-600" id="nearby-count">0</div>
                     <div class="text-sm text-gray-600">Annunci vicini</div>
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
-                    <div class="text-2xl font-bold text-blue-600">127</div>
-                    <div class="text-sm text-gray-600">Kg salvati</div>
+                    <div class="text-2xl font-bold text-blue-600" id="total-listings">0</div>
+                    <div class="text-sm text-gray-600">Totali</div>
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-sm text-center border border-gray-100">
-                    <div class="text-2xl font-bold text-orange-600">43</div>
-                    <div class="text-sm text-gray-600">Utenti attivi</div>
+                    <div class="text-2xl font-bold text-orange-600" id="active-users">1</div>
+                    <div class="text-sm text-gray-600">Online</div>
                 </div>
+            </div>
+
+            <!-- Refresh Button -->
+            <div class="mb-4 flex justify-center">
+                <button id="refresh-btn" class="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 flex items-center gap-2 hover:bg-gray-50">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Aggiorna
+                </button>
             </div>
 
             <!-- Listings Container -->
@@ -111,6 +142,16 @@
                 <div class="text-6xl mb-4">🔍</div>
                 <h3 class="text-xl font-semibold text-gray-700 mb-2">Nessun annuncio nelle vicinanze</h3>
                 <p class="text-gray-500">Prova ad aumentare il raggio di ricerca o aggiungi tu il primo annuncio!</p>
+            </div>
+
+            <!-- Error Message -->
+            <div id="error-message" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg hidden">
+                <div class="flex items-center gap-2">
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM13 17h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                    </svg>
+                    <span>Errore nel caricamento degli annunci. <button class="underline" onclick="loadListings()">Riprova</button></span>
+                </div>
             </div>
         </div>
 
@@ -164,7 +205,6 @@
                         <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🥐">🥐</button>
                         <button type="button" class="emoji-btn text-3xl p-2 rounded hover:bg-gray-100" data-emoji="🍰">🍰</button>
                     </div>
-                    <input type="hidden" id="selected-emoji" value="🥬">
                 </div>
 
                 <div>
@@ -325,56 +365,50 @@
     </nav>
 
     <script>
+        // Firebase Configuration - SOSTITUISCI CON I TUOI DATI
+        const firebaseConfig = {
+            apiKey: "your-api-key-here",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "your-app-id"
+        };
+
+        // Initialize Firebase
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            console.log('Firebase initialized successfully');
+        } catch (error) {
+            console.error('Error initializing Firebase:', error);
+            showError('Errore di configurazione database');
+        }
+
         // App State
         let currentView = 'browse';
         let selectedListing = null;
         let searchRadius = 5;
         let selectedEmoji = '🥬';
-        
-        // Sample data
-        let listings = [
-            {
-                id: 1,
-                title: "Verdure fresche miste",
-                description: "Insalata, pomodori e zucchine dal mio orto. Raccolte stamattina ma ne ho troppe!",
-                image: "🥬",
-                expiryDate: "2024-08-07",
-                location: "Via Roma 123, Bari",
-                contactInfo: "Maria - 339 123 4567",
-                postedBy: "Maria G.",
-                postedDate: "2024-08-06",
-                candidates: [],
-                distance: 0.8
-            },
-            {
-                id: 2,
-                title: "Pane di altamura",
-                description: "Pane fresco fatto in casa, ne ho fatto troppo per la famiglia. Ancora caldo!",
-                image: "🍞",
-                expiryDate: "2024-08-08",
-                location: "Corso Vittorio Emanuele 45, Bari",
-                contactInfo: "Giuseppe - 347 987 6543",
-                postedBy: "Giuseppe R.",
-                postedDate: "2024-08-06",
-                candidates: [{ name: "Anna M.", time: "30 min fa" }],
-                distance: 1.2
-            },
-            {
-                id: 3,
-                title: "Frutta di stagione",
-                description: "Pesche, albicocche e fichi. Mature al punto giusto ma vanno consumate subito.",
-                image: "🍑",
-                expiryDate: "2024-08-07",
-                location: "Piazza Aldo Moro 12, Bari",
-                contactInfo: "Francesco - 334 567 8901",
-                postedBy: "Francesco L.",
-                postedDate: "2024-08-05",
-                candidates: [],
-                distance: 2.1
-            }
-        ];
+        let listings = [];
 
         // Utility functions
+        function showLoading() {
+            document.getElementById('loading-overlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.querySelector('span').textContent = message;
+            errorDiv.classList.remove('hidden');
+            setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+        }
+
         function formatTimeLeft(expiryDate) {
             const now = new Date();
             const expiry = new Date(expiryDate);
@@ -387,10 +421,106 @@
             return "Scaduto";
         }
 
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return (R * c).toFixed(1); // Distance in km
+        }
+
         function getFilteredListings() {
             return listings.filter(listing => listing.distance <= searchRadius);
         }
 
+        // Firebase Database Functions
+        async function loadListings() {
+            try {
+                showLoading();
+                const snapshot = await db.collection('listings')
+                    .where('expiryDate', '>=', new Date().toISOString().split('T')[0])
+                    .orderBy('expiryDate')
+                    .orderBy('createdAt', 'desc')
+                    .get();
+
+                listings = [];
+                const userLat = 41.1171; // Default to Bari coordinates
+                const userLng = 16.8719;
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const listing = {
+                        id: doc.id,
+                        ...data,
+                        distance: calculateDistance(
+                            userLat, userLng,
+                            data.coords?.lat || userLat,
+                            data.coords?.lng || userLng
+                        )
+                    };
+                    listings.push(listing);
+                });
+
+                renderListings();
+                hideLoading();
+                
+            } catch (error) {
+                console.error('Error loading listings:', error);
+                showError('Errore nel caricamento degli annunci');
+                hideLoading();
+            }
+        }
+
+        async function saveListing(listingData) {
+            try {
+                showLoading();
+                
+                const docData = {
+                    ...listingData,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    coords: { lat: 41.1171, lng: 16.8719 }, // Default coordinates
+                    candidates: [],
+                    status: 'active'
+                };
+
+                const docRef = await db.collection('listings').add(docData);
+                console.log('Listing saved with ID:', docRef.id);
+                
+                hideLoading();
+                return docRef.id;
+                
+            } catch (error) {
+                console.error('Error saving listing:', error);
+                showError('Errore nel salvataggio dell\'annuncio');
+                hideLoading();
+                throw error;
+            }
+        }
+
+        async function addCandidate(listingId, candidateData) {
+            try {
+                showLoading();
+                
+                await db.collection('listings').doc(listingId).update({
+                    candidates: firebase.firestore.FieldValue.arrayUnion(candidateData),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                hideLoading();
+                
+            } catch (error) {
+                console.error('Error adding candidate:', error);
+                showError('Errore nell\'invio della candidatura');
+                hideLoading();
+                throw error;
+            }
+        }
+
+        // UI Functions
         function showView(viewName) {
             document.getElementById('browse-view').classList.add('hidden');
             document.getElementById('add-view').classList.add('hidden');
@@ -409,17 +539,15 @@
             }
             
             currentView = viewName;
-            
-            if (viewName === 'browse') {
-                renderListings();
-            }
         }
 
         function renderListings() {
             const container = document.getElementById('listings-container');
             const filteredListings = getFilteredListings();
             
+            // Update statistics
             document.getElementById('nearby-count').textContent = filteredListings.length;
+            document.getElementById('total-listings').textContent = listings.length;
             
             if (filteredListings.length === 0) {
                 container.innerHTML = '';
@@ -460,7 +588,7 @@
                                         <span class="font-medium">${formatTimeLeft(listing.expiryDate)}</span>
                                     </div>
                                     
-                                    ${listing.candidates.length > 0 ? `
+                                    ${listing.candidates && listing.candidates.length > 0 ? `
                                     <div class="flex items-center gap-1 text-sm text-blue-600">
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -483,7 +611,7 @@
             // Add click listeners to listings
             container.querySelectorAll('[data-listing-id]').forEach(el => {
                 el.addEventListener('click', () => {
-                    const id = parseInt(el.dataset.listingId);
+                    const id = el.dataset.listingId;
                     selectedListing = listings.find(l => l.id === id);
                     showDetailView();
                 });
@@ -503,7 +631,7 @@
             document.getElementById('detail-contact').textContent = selectedListing.contactInfo;
             
             // Handle candidates
-            if (selectedListing.candidates.length > 0) {
+            if (selectedListing.candidates && selectedListing.candidates.length > 0) {
                 const candidatesSection = document.getElementById('candidates-section');
                 const candidatesTitle = document.getElementById('candidates-title');
                 const candidatesList = document.getElementById('candidates-list');
@@ -523,7 +651,7 @@
             
             // Handle apply button
             const applyBtn = document.getElementById('apply-btn');
-            const hasApplied = selectedListing.candidates.some(c => c.name === "Tu");
+            const hasApplied = selectedListing.candidates && selectedListing.candidates.some(c => c.name === "Tu");
             
             if (hasApplied) {
                 applyBtn.className = 'flex-1 py-3 px-6 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors bg-gray-200 text-gray-500 cursor-not-allowed';
@@ -548,15 +676,42 @@
             showView('detail');
         }
 
-        function handleApplication() {
-            if (selectedListing && !selectedListing.candidates.some(c => c.name === "Tu")) {
-                selectedListing.candidates.push({ name: "Tu", time: "Appena ora" });
+        async function handleApplication() {
+            if (!selectedListing || !selectedListing.id) return;
+            
+            try {
+                const candidateData = {
+                    name: "Tu",
+                    time: new Date().toLocaleTimeString('it-IT', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    }) + ' di oggi',
+                    timestamp: new Date()
+                };
+                
+                await addCandidate(selectedListing.id, candidateData);
+                
+                // Update local data
+                if (!selectedListing.candidates) {
+                    selectedListing.candidates = [];
+                }
+                selectedListing.candidates.push(candidateData);
+                
+                // Update the listing in the listings array
+                const listingIndex = listings.findIndex(l => l.id === selectedListing.id);
+                if (listingIndex !== -1) {
+                    listings[listingIndex] = selectedListing;
+                }
+                
                 showDetailView(); // Refresh the detail view
                 alert('Ti sei candidato con successo! Il proprietario ti contatterà presto.');
+                
+            } catch (error) {
+                console.error('Error applying for listing:', error);
             }
         }
 
-        function submitListing() {
+        async function submitListing() {
             const title = document.getElementById('new-title').value.trim();
             const description = document.getElementById('new-description').value.trim();
             const expiry = document.getElementById('new-expiry').value;
@@ -568,33 +723,42 @@
                 return;
             }
             
-            const newListing = {
-                id: listings.length + 1,
-                title,
-                description,
-                image: selectedEmoji,
-                expiryDate: expiry,
-                location,
-                contactInfo: contact,
-                postedBy: "Tu",
-                postedDate: new Date().toISOString().split('T')[0],
-                candidates: [],
-                distance: 0
-            };
+            const expiryDate = new Date(expiry);
+            const today = new Date();
+            if (expiryDate < today) {
+                alert('La data di scadenza deve essere futura');
+                return;
+            }
             
-            listings.unshift(newListing);
-            
-            // Clear form
-            document.getElementById('new-title').value = '';
-            document.getElementById('new-description').value = '';
-            document.getElementById('new-expiry').value = '';
-            document.getElementById('new-location').value = '';
-            document.getElementById('new-contact').value = '';
-            selectedEmoji = '🥬';
-            updateEmojiSelection();
-            
-            showView('browse');
-            alert('Annuncio pubblicato con successo!');
+            try {
+                const listingData = {
+                    title,
+                    description,
+                    image: selectedEmoji,
+                    expiryDate: expiry,
+                    location,
+                    contactInfo: contact,
+                    postedBy: "Tu"
+                };
+                
+                const newId = await saveListing(listingData);
+                
+                // Clear form
+                document.getElementById('new-title').value = '';
+                document.getElementById('new-description').value = '';
+                document.getElementById('new-expiry').value = '';
+                document.getElementById('new-location').value = '';
+                document.getElementById('new-contact').value = '';
+                selectedEmoji = '🥬';
+                updateEmojiSelection();
+                
+                showView('browse');
+                loadListings(); // Reload listings to show the new one
+                alert('Annuncio pubblicato con successo!');
+                
+            } catch (error) {
+                console.error('Error submitting listing:', error);
+            }
         }
 
         function updateEmojiSelection() {
@@ -604,7 +768,6 @@
                     btn.classList.add('bg-blue-100', 'border-2', 'border-blue-500');
                 }
             });
-            document.getElementById('selected-emoji').value = selectedEmoji;
         }
 
         // Event Listeners
@@ -617,6 +780,9 @@
             document.getElementById('nav-browse').addEventListener('click', () => showView('browse'));
             document.getElementById('nav-add').addEventListener('click', () => showView('add'));
             document.getElementById('back-btn').addEventListener('click', () => showView('browse'));
+            
+            // Refresh button
+            document.getElementById('refresh-btn').addEventListener('click', loadListings);
             
             // Search radius
             const radiusSlider = document.getElementById('search-radius');
@@ -644,8 +810,11 @@
             
             // Initialize
             updateEmojiSelection();
-            renderListings();
+            loadListings();
         });
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadListings, 30000);
     </script>
 </body>
 </html>
