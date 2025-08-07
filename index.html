@@ -459,25 +459,31 @@
                     .get();
 
                 listings = [];
-                const userLat = 41.1171; // Default to Bari coordinates
-                const userLng = 16.8719;
+				
+				navigator.geolocation.getCurrentPosition(async (position) => {
+					const userLat = position.coords.latitude;
+					const userLng = position.coords.longitude;
+					
+					snapshot.forEach(doc => {
+						const data = doc.data();
+						const listing = {
+							id: doc.id,
+							...data,
+							distance: calculateDistance(
+								userLat, userLng,
+								data.coords?.lat || userLat,
+								data.coords?.lng || userLng
+							)
+						};
+						listings.push(listing);
+					});
 
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const listing = {
-                        id: doc.id,
-                        ...data,
-                        distance: calculateDistance(
-                            userLat, userLng,
-                            data.coords?.lat || userLat,
-                            data.coords?.lng || userLng
-                        )
-                    };
-                    listings.push(listing);
-                });
+					renderListings();
+					hideLoading();
+					
+				});
 
-                renderListings();
-                hideLoading();
+ 
                 
             } catch (error) {
                 console.error('Error loading listings:', error);
