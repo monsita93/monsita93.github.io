@@ -4,25 +4,27 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>FoodShare</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
     <h1>FoodShare</h1>
     <div id="user-area">
-      <button id="login-btn">Accedi con Google</button>
-      <button id="logout-btn" style="display:none;">Esci</button>
+      <button id="login-btn" class="primary-btn">Accedi con Google</button>
+      <button id="logout-btn" class="secondary-btn" style="display:none;">Esci</button>
       <span id="user-name"></span>
     </div>
   </header>
 
   <main>
-    <section id="new-post" class="card" style="display:none;">
+    <section id="new-post" class="card hidden">
       <h2>Nuovo annuncio</h2>
       <input id="title" placeholder="Titolo" />
       <textarea id="desc" placeholder="Descrizione"></textarea>
       <label>Scadenza: <input type="date" id="expiry" /></label>
-      <button id="post-btn">Pubblica annuncio</button>
+      <button id="post-btn" class="primary-btn">Pubblica annuncio</button>
+      <button id="close-new-post" class="secondary-btn">Chiudi</button>
       <p class="muted">La posizione verrà acquisita dal browser.</p>
     </section>
 
@@ -30,7 +32,7 @@
       <label>Distanza massima (km):
         <input type="number" id="max-distance" value="5" min="0">
       </label>
-      <button id="refresh-btn">Aggiorna</button>
+      <button id="refresh-btn" class="secondary-btn">Aggiorna</button>
     </section>
 
     <section class="card">
@@ -43,7 +45,9 @@
     <small>Progetto demo — sostituisci la configurazione Firebase in <code>app.js</code>.</small>
   </footer>
 
-  <!-- Firebase compat SDK (no build, easier migration from older examples) -->
+  <button id="fab-btn" class="fab">+</button>
+
+  <!-- Firebase compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
