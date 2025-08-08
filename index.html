@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     
     <style>
         .gradient-bg {
@@ -47,6 +48,40 @@
         </div>
     </div>
 
+    <!-- Login Screen -->
+    <div id="login-screen" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="max-w-md w-full mx-4">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 gradient-bg rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <span class="text-white font-bold text-2xl">F</span>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">FoodShare</h1>
+                <p class="text-gray-600">Condividi cibo, riduci sprechi</p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-6 text-center">Accedi per continuare</h2>
+                
+                <button
+                    id="google-login-btn"
+                    class="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 rounded-lg px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                >
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continua con Google
+                </button>
+
+                <div class="mt-6 text-center text-sm text-gray-500">
+                    Accedendo accetti i nostri termini di servizio e la privacy policy
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
         <div class="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
@@ -57,11 +92,25 @@
                 <h1 class="text-xl font-bold text-gray-900">FoodShare</h1>
             </div>
             
-            <div class="flex items-center gap-1">
-                <svg class="h-4 w-4 text-yellow-500 fill-current" viewBox="0 0 24 24">
-                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                </svg>
-                <span class="text-sm text-gray-600">4.8</span>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1">
+                    <svg class="h-4 w-4 text-yellow-500 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                    </svg>
+                    <span class="text-sm text-gray-600">4.8</span>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <img id="user-photo" src="" alt="User" class="w-8 h-8 rounded-full border-2 border-gray-200 hidden">
+                    <div class="text-right">
+                        <div id="user-name" class="text-sm font-medium text-gray-900 hidden"></div>
+                    </div>
+                    <button id="logout-btn" class="text-gray-500 hover:text-gray-700 hidden">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -232,7 +281,7 @@
                         type="text"
                         id="new-contact"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Il tuo nome e telefono (es. Mario - 339 123 4567)"
+                        placeholder="Il tuo telefono (es. 339 123 4567)"
                     />
                 </div>
 
@@ -365,488 +414,124 @@
     </nav>
 
     <script>
-        // Firebase Configuration - SOSTITUISCI CON I TUOI DATI
-        /*
-		const firebaseConfig = {
-            apiKey: "your-api-key-here",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "your-app-id"
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCHN6FisiuH2JwboVcyrlg1UHnsLNAIWDE",
+            authDomain: "foodshare-app-ff567.firebaseapp.com",
+            databaseURL: "https://foodshare-app-ff567-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "foodshare-app-ff567",
+            storageBucket: "foodshare-app-ff567.firebasestorage.app",
+            messagingSenderId: "120193233604",
+            appId: "1:120193233604:web:fa7afd4bde94b558378f91",
+            measurementId: "G-2B7P1JMHES"
         };
-		*/
-		const firebaseConfig = {
-		  apiKey: "AIzaSyCHN6FisiuH2JwboVcyrlg1UHnsLNAIWDE",
-		  authDomain: "foodshare-app-ff567.firebaseapp.com",
-		  databaseURL: "https://foodshare-app-ff567-default-rtdb.europe-west1.firebasedatabase.app",
-		  projectId: "foodshare-app-ff567",
-		  storageBucket: "foodshare-app-ff567.firebasestorage.app",
-		  messagingSenderId: "120193233604",
-		  appId: "1:120193233604:web:fa7afd4bde94b558378f91",
-		  measurementId: "G-2B7P1JMHES"
-		};
 
         // Initialize Firebase
-        let db;
+        let db, auth;
+        let currentUser = null;
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
+            auth = firebase.auth();
             console.log('Firebase initialized successfully');
         } catch (error) {
             console.error('Error initializing Firebase:', error);
             showError('Errore di configurazione database');
         }
 
-        // App State
-        let currentView = 'browse';
-        let selectedListing = null;
-        let searchRadius = 5;
-        let selectedEmoji = '🥬';
-        let listings = [];
+        // Google Auth Provider
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+        googleProvider.addScope('profile');
+        googleProvider.addScope('email');
 
-        // Utility functions
-        function showLoading() {
-            document.getElementById('loading-overlay').classList.remove('hidden');
-        }
+        // Authentication State Observer
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // User is signed in
+                currentUser = user;
+                showMainApp();
+                updateUserUI(user);
+                loadListings();
+            } else {
+                // User is signed out
+                currentUser = null;
+                showLoginScreen();
+            }
+        });
 
-        function hideLoading() {
-            document.getElementById('loading-overlay').classList.add('hidden');
-        }
-
-        function showError(message) {
-            const errorDiv = document.getElementById('error-message');
-            errorDiv.querySelector('span').textContent = message;
-            errorDiv.classList.remove('hidden');
-            setTimeout(() => errorDiv.classList.add('hidden'), 5000);
-        }
-
-        function formatTimeLeft(expiryDate) {
-            const now = new Date();
-            const expiry = new Date(expiryDate);
-            const diffTime = expiry - now;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays === 0) return "Scade oggi";
-            if (diffDays === 1) return "Scade domani";
-            if (diffDays > 1) return `Scade tra ${diffDays} giorni`;
-            return "Scaduto";
-        }
-
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Radius of the Earth in km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return (R * c).toFixed(1); // Distance in km
-        }
-
-        function getFilteredListings() {
-            return listings.filter(listing => listing.distance <= searchRadius);
-        }
-
-        // Firebase Database Functions
-        async function loadListings() {
+        // Authentication Functions
+        async function signInWithGoogle() {
             try {
                 showLoading();
-                const snapshot = await db.collection('listings')
-                    .where('expiryDate', '>=', new Date().toISOString().split('T')[0])
-                    .orderBy('expiryDate')
-                    .orderBy('createdAt', 'desc')
-                    .get();
-
-                listings = [];
-				
-				navigator.geolocation.getCurrentPosition(async (position) => {
-					const userLat = position.coords.latitude;
-					const userLng = position.coords.longitude;
-					
-					snapshot.forEach(doc => {
-						const data = doc.data();
-						const listing = {
-							id: doc.id,
-							...data,
-							distance: calculateDistance(
-								userLat, userLng,
-								data.coords?.lat || userLat,
-								data.coords?.lng || userLng
-							)
-						};
-						listings.push(listing);
-					});
-
-					renderListings();
-					hideLoading();
-					
-				});
-
- 
+                const result = await auth.signInWithPopup(googleProvider);
+                const user = result.user;
+                console.log('User signed in:', user.displayName);
                 
-            } catch (error) {
-                console.error('Error loading listings:', error);
-                showError('Errore nel caricamento degli annunci');
+                // Save user data to Firestore
+                await saveUserData(user);
+                
                 hideLoading();
+            } catch (error) {
+                console.error('Error signing in:', error);
+                hideLoading();
+                
+                if (error.code === 'auth/popup-blocked') {
+                    showError('Popup bloccato dal browser. Abilita i popup per questo sito.');
+                } else if (error.code === 'auth/cancelled-popup-request') {
+                    showError('Accesso annullato.');
+                } else {
+                    showError('Errore durante l\'accesso. Riprova.');
+                }
             }
         }
 
-        async function saveListing(listingData) {
+        async function signOut() {
             try {
-                showLoading();
-				
-				 // Ottieni coordinate dal dispositivo
-				if (!navigator.geolocation) {
-					alert('Geolocalizzazione non supportata dal tuo browser');
-					return;
-				}
-                
-				navigator.geolocation.getCurrentPosition(async (position) => {
-					const coords = {
-						lat: position.coords.latitude,
-						lng: position.coords.longitude
-					};
-					
-					const docData = {
-						...listingData,
-						createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-						updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-						coords: coords,
-						candidates: [],
-						status: 'active'
-					};
-
-					const docRef = await db.collection('listings').add(docData);
-					console.log('Listing saved with ID:', docRef.id);
-					
-					hideLoading();
-					return docRef.id;
-				});
-
-                
+                await auth.signOut();
+                console.log('User signed out');
             } catch (error) {
-                console.error('Error saving listing:', error);
-                showError('Errore nel salvataggio dell\'annuncio');
-                hideLoading();
-                throw error;
+                console.error('Error signing out:', error);
+                showError('Errore durante la disconnessione');
             }
         }
 
-        async function addCandidate(listingId, candidateData) {
+        async function saveUserData(user) {
             try {
-                showLoading();
-                
-                await db.collection('listings').doc(listingId).update({
-                    candidates: firebase.firestore.FieldValue.arrayUnion(candidateData),
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                hideLoading();
-                
+                await db.collection('users').doc(user.uid).set({
+                    name: user.displayName,
+                    email: user.email,
+                    photoURL: user.photoURL,
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
             } catch (error) {
-                console.error('Error adding candidate:', error);
-                showError('Errore nell\'invio della candidatura');
-                hideLoading();
-                throw error;
+                console.error('Error saving user data:', error);
             }
         }
 
         // UI Functions
-        function showView(viewName) {
-            document.getElementById('browse-view').classList.add('hidden');
-            document.getElementById('add-view').classList.add('hidden');
-            document.getElementById('detail-view').classList.add('hidden');
-            
-            document.getElementById(viewName + '-view').classList.remove('hidden');
-            
-            // Update navigation
-            document.getElementById('nav-browse').className = 'flex-1 py-4 flex flex-col items-center gap-1 transition-colors text-gray-600 hover:text-gray-800 hover:bg-gray-50';
-            document.getElementById('nav-add').className = 'flex-1 py-4 flex flex-col items-center gap-1 transition-colors text-gray-600 hover:text-gray-800 hover:bg-gray-50';
-            
-            if (viewName === 'browse') {
-                document.getElementById('nav-browse').className = 'flex-1 py-4 flex flex-col items-center gap-1 transition-colors text-green-600 bg-green-50';
-            } else if (viewName === 'add') {
-                document.getElementById('nav-add').className = 'flex-1 py-4 flex flex-col items-center gap-1 transition-colors text-green-600 bg-green-50';
-            }
-            
-            currentView = viewName;
+        function showLoginScreen() {
+            document.getElementById('login-screen').classList.remove('hidden');
         }
 
-        function renderListings() {
-            const container = document.getElementById('listings-container');
-            const filteredListings = getFilteredListings();
-            
-            // Update statistics
-            document.getElementById('nearby-count').textContent = filteredListings.length;
-            document.getElementById('total-listings').textContent = listings.length;
-            
-            if (filteredListings.length === 0) {
-                container.innerHTML = '';
-                document.getElementById('no-results').classList.remove('hidden');
-                return;
-            }
-            
-            document.getElementById('no-results').classList.add('hidden');
-            
-            container.innerHTML = filteredListings.map(listing => `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow cursor-pointer card-hover" data-listing-id="${listing.id}">
-                    <div class="flex gap-4">
-                        <div class="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-3xl border-2 border-gray-200">
-                            ${listing.image}
-                        </div>
-                        
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-start justify-between mb-2">
-                                <h3 class="font-semibold text-gray-900 text-lg">${listing.title}</h3>
-                                <div class="flex items-center gap-2 text-sm text-gray-500">
-                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                        <circle cx="12" cy="10" r="3"/>
-                                    </svg>
-                                    <span>${listing.distance} km</span>
-                                </div>
-                            </div>
-                            
-                            <p class="text-gray-600 text-sm mb-3 line-clamp-2">${listing.description}</p>
-                            
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-4">
-                                    <div class="flex items-center gap-1 text-sm text-red-600">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <circle cx="12" cy="12" r="10"/>
-                                            <polyline points="12,6 12,12 16,14"/>
-                                        </svg>
-                                        <span class="font-medium">${formatTimeLeft(listing.expiryDate)}</span>
-                                    </div>
-                                    
-                                    ${listing.candidates && listing.candidates.length > 0 ? `
-                                    <div class="flex items-center gap-1 text-sm text-blue-600">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                            <circle cx="12" cy="7" r="4"/>
-                                        </svg>
-                                        <span>${listing.candidates.length} interessat${listing.candidates.length === 1 ? 'o' : 'i'}</span>
-                                    </div>
-                                    ` : ''}
-                                </div>
-                                
-                                <div class="text-sm text-gray-500">
-                                    da ${listing.postedBy}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-            
-            // Add click listeners to listings
-            container.querySelectorAll('[data-listing-id]').forEach(el => {
-                el.addEventListener('click', () => {
-                    const id = el.dataset.listingId;
-                    selectedListing = listings.find(l => l.id === id);
-                    showDetailView();
-                });
-            });
+        function showMainApp() {
+            document.getElementById('login-screen').classList.add('hidden');
         }
 
-        function showDetailView() {
-            if (!selectedListing) return;
-            
-            document.getElementById('detail-image').textContent = selectedListing.image;
-            document.getElementById('detail-title').textContent = selectedListing.title;
-            document.getElementById('detail-description').textContent = selectedListing.description;
-            document.getElementById('detail-expiry').textContent = formatTimeLeft(selectedListing.expiryDate);
-            document.getElementById('detail-expiry-date').textContent = selectedListing.expiryDate;
-            document.getElementById('detail-distance').textContent = selectedListing.distance + ' km da te';
-            document.getElementById('detail-location').textContent = selectedListing.location;
-            document.getElementById('detail-contact').textContent = selectedListing.contactInfo;
-            
-            // Handle candidates
-            if (selectedListing.candidates && selectedListing.candidates.length > 0) {
-                const candidatesSection = document.getElementById('candidates-section');
-                const candidatesTitle = document.getElementById('candidates-title');
-                const candidatesList = document.getElementById('candidates-list');
-                
-                candidatesSection.classList.remove('hidden');
-                candidatesTitle.textContent = `${selectedListing.candidates.length} utent${selectedListing.candidates.length === 1 ? 'e' : 'i'} interessat${selectedListing.candidates.length === 1 ? 'o' : 'i'}`;
-                
-                candidatesList.innerHTML = selectedListing.candidates.map(candidate => `
-                    <div class="flex justify-between items-center text-sm">
-                        <span class="text-orange-800 font-medium">${candidate.name}</span>
-                        <span class="text-orange-600">${candidate.time}</span>
-                    </div>
-                `).join('');
-            } else {
-                document.getElementById('candidates-section').classList.add('hidden');
+        function updateUserUI(user) {
+            const userPhoto = document.getElementById('user-photo');
+            const userName = document.getElementById('user-name');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            if (user.photoURL) {
+                userPhoto.src = user.photoURL;
+                userPhoto.classList.remove('hidden');
             }
-            
-            // Handle apply button
-            const applyBtn = document.getElementById('apply-btn');
-            const hasApplied = selectedListing.candidates && selectedListing.candidates.some(c => c.name === "Tu");
-            
-            if (hasApplied) {
-                applyBtn.className = 'flex-1 py-3 px-6 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors bg-gray-200 text-gray-500 cursor-not-allowed';
-                applyBtn.innerHTML = `
-                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                    </svg>
-                    Già candidato
-                `;
-                applyBtn.disabled = true;
-            } else {
-                applyBtn.className = 'flex-1 py-3 px-6 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors gradient-bg text-white hover:opacity-90';
-                applyBtn.innerHTML = `
-                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                    </svg>
-                    Candidati per il ritiro
-                `;
-                applyBtn.disabled = false;
+
+            if (user.displayName) {
+                userName.textContent = user.displayName.split(' ')[0]; // Show only first name
+                userName.classList.remove('hidden');
             }
-            
-            showView('detail');
+
+            logoutBtn.classList.remove('hidden');
         }
-
-        async function handleApplication() {
-            if (!selectedListing || !selectedListing.id) return;
-            
-            try {
-                const candidateData = {
-                    name: "Tu",
-                    time: new Date().toLocaleTimeString('it-IT', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                    }) + ' di oggi',
-                    timestamp: new Date()
-                };
-                
-                await addCandidate(selectedListing.id, candidateData);
-                
-                // Update local data
-                if (!selectedListing.candidates) {
-                    selectedListing.candidates = [];
-                }
-                selectedListing.candidates.push(candidateData);
-                
-                // Update the listing in the listings array
-                const listingIndex = listings.findIndex(l => l.id === selectedListing.id);
-                if (listingIndex !== -1) {
-                    listings[listingIndex] = selectedListing;
-                }
-                
-                showDetailView(); // Refresh the detail view
-                alert('Ti sei candidato con successo! Il proprietario ti contatterà presto.');
-                
-            } catch (error) {
-                console.error('Error applying for listing:', error);
-            }
-        }
-
-        async function submitListing() {
-            const title = document.getElementById('new-title').value.trim();
-            const description = document.getElementById('new-description').value.trim();
-            const expiry = document.getElementById('new-expiry').value;
-            const location = document.getElementById('new-location').value.trim();
-            const contact = document.getElementById('new-contact').value.trim();
-            
-            if (!title || !description || !expiry || !location || !contact) {
-                alert('Per favore compila tutti i campi obbligatori');
-                return;
-            }
-            
-            const expiryDate = new Date(expiry);
-            const today = new Date();
-            if (expiryDate < today) {
-                alert('La data di scadenza deve essere futura');
-                return;
-            }
-            
-            try {
-                const listingData = {
-                    title,
-                    description,
-                    image: selectedEmoji,
-                    expiryDate: expiry,
-                    location,
-                    contactInfo: contact,
-                    postedBy: "Tu"
-                };
-                
-                const newId = await saveListing(listingData);
-                
-                // Clear form
-                document.getElementById('new-title').value = '';
-                document.getElementById('new-description').value = '';
-                document.getElementById('new-expiry').value = '';
-                document.getElementById('new-location').value = '';
-                document.getElementById('new-contact').value = '';
-                selectedEmoji = '🥬';
-                updateEmojiSelection();
-                
-                showView('browse');
-                loadListings(); // Reload listings to show the new one
-                alert('Annuncio pubblicato con successo!');
-                
-            } catch (error) {
-                console.error('Error submitting listing:', error);
-            }
-        }
-
-        function updateEmojiSelection() {
-            document.querySelectorAll('.emoji-btn').forEach(btn => {
-                btn.classList.remove('bg-blue-100', 'border-2', 'border-blue-500');
-                if (btn.dataset.emoji === selectedEmoji) {
-                    btn.classList.add('bg-blue-100', 'border-2', 'border-blue-500');
-                }
-            });
-        }
-
-        // Event Listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set minimum date to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('new-expiry').min = today;
-            
-            // Navigation
-            document.getElementById('nav-browse').addEventListener('click', () => showView('browse'));
-            document.getElementById('nav-add').addEventListener('click', () => showView('add'));
-            document.getElementById('back-btn').addEventListener('click', () => showView('browse'));
-            
-            // Refresh button
-            document.getElementById('refresh-btn').addEventListener('click', loadListings);
-            
-            // Search radius
-            const radiusSlider = document.getElementById('search-radius');
-            const radiusValue = document.getElementById('radius-value');
-            
-            radiusSlider.addEventListener('input', (e) => {
-                searchRadius = parseInt(e.target.value);
-                radiusValue.textContent = searchRadius;
-                renderListings();
-            });
-            
-            // Emoji selection
-            document.querySelectorAll('.emoji-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    selectedEmoji = btn.dataset.emoji;
-                    updateEmojiSelection();
-                });
-            });
-            
-            // Submit listing
-            document.getElementById('submit-listing').addEventListener('click', submitListing);
-            
-            // Apply for listing
-            document.getElementById('apply-btn').addEventListener('click', handleApplication);
-            
-            // Initialize
-            updateEmojiSelection();
-            loadListings();
-        });
-
-        // Auto-refresh every 30 seconds
-        setInterval(loadListings, 30000);
-    </script>
-</body>
-</html>
