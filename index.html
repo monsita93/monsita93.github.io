@@ -80,6 +80,12 @@
                         Debug Info (per sviluppatori)
                     </button>
                 </div>
+                
+                <div class="mt-2 text-center">
+                    <button id="redirect-login-btn" class="text-sm text-orange-600 hover:text-orange-800 underline">
+                        Prova metodo alternativo (redirect)
+                    </button>
+                </div>
 
                 <div id="debug-info" class="mt-4 p-3 bg-gray-100 rounded text-xs text-gray-600 hidden">
                     <div id="debug-content">Clicca "Debug Info" per vedere dettagli tecnici</div>
@@ -439,20 +445,33 @@
         // Initialize Firebase
         let db, auth;
         let currentUser = null;
+        let firebaseInitialized = false;
+        
         try {
+            console.log('Initializing Firebase...');
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
             auth = firebase.auth();
+            firebaseInitialized = true;
             console.log('Firebase initialized successfully');
+            console.log('Auth object:', auth);
+            console.log('Firestore object:', db);
         } catch (error) {
             console.error('Error initializing Firebase:', error);
+            firebaseInitialized = false;
             showError('Errore di configurazione database');
         }
 
         // Google Auth Provider
-        const googleProvider = new firebase.auth.GoogleAuthProvider();
-        googleProvider.addScope('profile');
-        googleProvider.addScope('email');
+        let googleProvider;
+        try {
+            googleProvider = new firebase.auth.GoogleAuthProvider();
+            googleProvider.addScope('profile');
+            googleProvider.addScope('email');
+            console.log('Google provider created successfully');
+        } catch (error) {
+            console.error('Error creating Google provider:', error);
+        }
 
         // Authentication State Observer
         auth.onAuthStateChanged(async (user) => {
@@ -479,63 +498,101 @@
 
         // Authentication Functions
         async function signInWithGoogle() {
+            console.log('=== GOOGLE SIGN IN DEBUG ===');
+            console.log('Button clicked - function called');
+            console.log('Firebase initialized:', firebaseInitialized);
+            console.log('Auth object exists:', !!auth);
+            console.log('Google provider exists:', !!googleProvider);
+            
+            if (!firebaseInitialized) {
+                console.error('Firebase not initialized!');
+                showError('Firebase non inizializzato. Ricarica la pagina.');
+                return;
+            }
+            
+            if (!auth) {
+                console.error('Auth object not available!');
+                showError('Servizio di autenticazione non disponibile.');
+                return;
+            }
+            
             try {
                 console.log('Attempting Google Sign In...');
                 showLoading();
                 
-                // Try popup first, fallback to redirect if blocked
-                try {
-                    const result = await auth.signInWithPopup(googleProvider);
-                    const user = result.user;
-                    console.log('User signed in with popup:', user.displayName);
-                    
-                    // Save user data to Firestore
-                    await saveUserData(user);
-                    hideLoading();
-                    
-                } catch (popupError) {
-                    console.error('Popup failed:', popupError);
-                    
-                    if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
-                        console.log('Falling back to redirect method...');
-                        hideLoading();
-                        
-                        // Fallback to redirect
-                        await auth.signInWithRedirect(googleProvider);
-                        // Note: redirect will reload the page, so no code after this runs
-                        
-                    } else {
-                        throw popupError; // Re-throw other errors
-                    }
-                }
+                console.log('Calling signInWithPopup...');
+                const result = await auth.signInWithPopup(googleProvider);
+                console.log('Popup completed successfully:', result);
                 
+                const user = result.user;
+                console.log('User signed in:', user.displayName, user.email);
+                
+                // Save user data to Firestore
+                await saveUserData(user);
+                hideLoading();
+                    
             } catch (error) {
-                console.error('Error signing in:', error);
+                console.error('=== SIGN IN ERROR ===');
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                console.error('Full error:', error);
+                
                 hideLoading();
                 
                 if (error.code === 'auth/popup-blocked') {
                     showError('Popup bloccato. Prova a disabilitare il blocco popup o ricarica la pagina.');
+                    console.log('Trying redirect as fallback...');
+                    try {
+                        await auth.signInWithRedirect(googleProvider);
+                    } catch (redirectError) {
+                        console.error('Redirect also failed:', redirectError);
+                    }
                 } else if (error.code === 'auth/cancelled-popup-request') {
                     showError('Accesso annullato.');
                 } else if (error.code === 'auth/unauthorized-domain') {
                     showError('Dominio non autorizzato. Controlla la configurazione Firebase.');
                 } else {
-                    showError(`Errore durante l'accesso: ${error.message}`);
+                    showError(`Errore durante l'accesso: ${error.code} - ${error.message}`);
                 }
             }
         }
         
-        // Handle redirect result when page loads
-        async function handleRedirectResult() {
+        // Alternative redirect login
+        async function signInWithGoogleRedirect() {
+            console.log('=== GOOGLE REDIRECT SIGN IN ===');
+            console.log('Redirect method called');
+            
+            if (!firebaseInitialized || !auth) {
+                console.error('Firebase not ready for redirect');
+                showError('Firebase non pronto per il redirect.');
+                return;
+            }
+            
             try {
-                const result = await auth.getRedirectResult();
-                if (result.user) {
-                    console.log('User signed in via redirect:', result.user.displayName);
-                    await saveUserData(result.user);
-                }
+                console.log('Starting redirect...');
+                await auth.signInWithRedirect(googleProvider);
+                // Page will reload, so no code after this runs
             } catch (error) {
                 console.error('Redirect error:', error);
-                showError('Errore durante il redirect di autenticazione');
+                showError(`Errore redirect: ${error.code} - ${error.message}`);
+            }
+        }
+            console.log('=== GOOGLE REDIRECT SIGN IN ===');
+            console.log('Redirect method called');
+            
+            if (!firebaseInitialized || !auth) {
+                console.error('Firebase not ready for redirect');
+                showError('Firebase non pronto per il redirect.');
+                return;
+            }
+            
+            try {
+                console.log('Starting redirect...');
+                await auth.signInWithRedirect(googleProvider);
+                // Page will reload, so no code after this runs
+            } catch (error) {
+                console.error('Redirect error:', error);
+                showError(`Errore redirect: ${error.code} - ${error.message}`);
             }
         }
 
