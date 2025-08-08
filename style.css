@@ -1,0 +1,15 @@
+*{box-sizing:border-box;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
+body{max-width:900px;margin:18px auto;padding:12px}
+header{display:flex;justify-content:space-between;align-items:center}
+.card{background:#fff;border:1px solid #e2e2e2;padding:12px;margin:12px 0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+input,textarea,button{display:block;width:100%;margin:8px 0;padding:8px;border-radius:6px;border:1px solid #ccc}
+button{cursor:pointer}
+#posts-list{list-style:none;padding:0}
+#posts-list li{padding:10px;border-bottom:1px dashed #eee}
+.muted{color:#666;font-size:0.9em}
+footer{margin-top:18px;text-align:center;color:#666}
+@media(min-width:600px){
+  textarea{height:80px}
+  main{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  #new-post{grid-column:1/3}
+}

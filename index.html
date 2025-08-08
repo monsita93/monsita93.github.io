@@ -1,41 +1,52 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>FoodShare</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>FoodShare</h1>
+  <header>
+    <h1>FoodShare</h1>
+    <div id="user-area">
+      <button id="login-btn">Accedi con Google</button>
+      <button id="logout-btn" style="display:none;">Esci</button>
+      <span id="user-name"></span>
+    </div>
+  </header>
 
-  <div id="user-info">
-    <button id="login-btn">Accedi con Google</button>
-    <button id="logout-btn" style="display:none;">Esci</button>
-    <span id="user-name"></span>
-  </div>
+  <main>
+    <section id="new-post" class="card" style="display:none;">
+      <h2>Nuovo annuncio</h2>
+      <input id="title" placeholder="Titolo" />
+      <textarea id="desc" placeholder="Descrizione"></textarea>
+      <label>Scadenza: <input type="date" id="expiry" /></label>
+      <button id="post-btn">Pubblica annuncio</button>
+      <p class="muted">La posizione verrà acquisita dal browser.</p>
+    </section>
 
-  <div id="new-post" style="display:none;">
-    <h2>Nuovo annuncio</h2>
-    <input type="text" id="title" placeholder="Titolo">
-    <input type="text" id="desc" placeholder="Descrizione">
-    <input type="date" id="expiry">
-    <button id="post-btn">Pubblica</button>
-  </div>
+    <section class="card">
+      <label>Distanza massima (km):
+        <input type="number" id="max-distance" value="5" min="0">
+      </label>
+      <button id="refresh-btn">Aggiorna</button>
+    </section>
 
-  <div>
-    <label>Distanza massima (km):
-      <input type="number" id="max-distance" value="5">
-    </label>
-  </div>
+    <section class="card">
+      <h2>Annunci vicini</h2>
+      <ul id="posts-list"></ul>
+    </section>
+  </main>
 
-  <h2>Annunci vicini</h2>
-  <ul id="posts-list"></ul>
+  <footer>
+    <small>Progetto demo — sostituisci la configurazione Firebase in <code>app.js</code>.</small>
+  </footer>
 
-  <!-- Firebase CDN -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+  <!-- Firebase compat SDK (no build, easier migration from older examples) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
   <script src="app.js"></script>
 </body>
