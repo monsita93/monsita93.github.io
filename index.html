@@ -1,15 +1,46 @@
 <!DOCTYPE html>
 <html lang="it">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>FoodShare</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FoodShare</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
 <body>
-<header><h1>FoodShare</h1><div id="user-area"><button id="login-btn" class="primary-btn">Accedi con Google</button><button id="logout-btn" class="secondary-btn" style="display:none;">Esci</button><span id="user-name"></span></div></header>
+<header>
+  <h1>FoodShare</h1>
+  <button id="loginBtn">Login con Google</button>
+  <button id="logoutBtn" style="display:none;">Logout</button>
+</header>
+
 <main>
-<section id="new-post" class="card hidden"><h2>Nuovo annuncio</h2><input id="title" placeholder="Titolo"/><textarea id="desc" placeholder="Descrizione"></textarea><label>Scadenza: <input type="date" id="expiry"/></label><label>Numero disponibili (opzionale): <input type="number" id="quantity" min="1"/></label><button id="post-btn" class="primary-btn">Pubblica annuncio</button><button id="close-new-post" class="secondary-btn">Chiudi</button><p class="muted">La posizione verrà acquisita dal browser.</p></section>
-<section class="card"><label>Distanza massima (km):<input type="number" id="max-distance" value="5" min="0"></label><button id="refresh-btn" class="secondary-btn">Aggiorna</button></section>
-<section class="card"><h2>Annunci vicini</h2><ul id="posts-list"></ul></section>
-</main><footer><small>Progetto demo — sostituisci la configurazione Firebase in <code>app.js</code>.</small></footer>
-<button id="fab-btn" class="fab" title="Aggiungi annuncio">+</button>
-<div id="chatWindow" class="chat-card hidden" aria-hidden="true"><div class="chat-header"><span id="chatTitle">Chat</span><button id="closeChatBtn" class="secondary-btn small">X</button></div><div id="chatMessages" class="chat-messages"></div><div class="chat-input"><input type="text" id="chatInput" placeholder="Scrivi un messaggio..."/><button id="sendBtn" class="primary-btn">Invia</button></div></div>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<script src="app.js"></script></body></html>
+  <div id="annunci"></div>
+
+  <!-- Floating Action Button -->
+  <button id="fab">+</button>
+
+  <!-- Pannello nuovo annuncio -->
+  <div id="nuovoAnnuncioPanel" class="hidden">
+    <h2>Nuovo annuncio</h2>
+    <input id="titolo" placeholder="Titolo">
+    <input id="descrizione" placeholder="Descrizione">
+    <input id="luogo" placeholder="Luogo">
+    <button id="pubblica">Pubblica</button>
+    <button id="chiudiPanel">Chiudi</button>
+  </div>
+
+  <!-- Chat -->
+  <div id="chatWindow" class="hidden">
+    <div id="chatMessages"></div>
+    <input id="chatInput" placeholder="Scrivi un messaggio...">
+    <button id="sendMsg">Invia</button>
+    <button id="closeChat">Chiudi Chat</button>
+  </div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
