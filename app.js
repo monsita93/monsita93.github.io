@@ -69,7 +69,7 @@ function caricaAnnunci() {
       const data = doc.data();
       const div = document.createElement('div');
       div.className = 'annuncio';
-      div.innerHTML = \`<h3>\${data.titolo}</h3><p>\${data.descrizione}</p>
+      div.innerHTML = `<h3>\${data.titolo}</h3><p>\${data.descrizione}</p>
         <p><strong>Luogo:</strong> \${data.luogo}</p>
         <p>Prenotati: \${data.prenotazioni.length}</p>
         <button onclick="prenotaAnnuncio('\${doc.id}')">Prenota</button>
