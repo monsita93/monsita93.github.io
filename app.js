@@ -9,151 +9,24 @@
             appId: "1:120193233604:web:fa7afd4bde94b558378f91",
             measurementId: "G-2B7P1JMHES"
         };
-
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-
-let currentUser = null;
-let currentPosition = null;
-
-// UI elements
-const loginBtn = document.getElementById('login-btn');
-const logoutBtn = document.getElementById('logout-btn');
-const userNameEl = document.getElementById('user-name');
-const newPostSection = document.getElementById('new-post');
-const postBtn = document.getElementById('post-btn');
-const postsList = document.getElementById('posts-list');
-const maxDistanceInput = document.getElementById('max-distance');
-const refreshBtn = document.getElementById('refresh-btn');
-const fabBtn = document.getElementById('fab-btn');
-const closeNewPostBtn = document.getElementById('close-new-post');
-
-// LOGIN
-loginBtn.addEventListener('click', () => {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(err => alert(err.message));
-});
-logoutBtn.addEventListener('click', () => auth.signOut());
-
-auth.onAuthStateChanged(user => {
-  if (user) {
-    currentUser = user;
-    userNameEl.textContent = `Ciao, ${user.displayName}`;
-    loginBtn.style.display = 'none';
-    logoutBtn.style.display = 'inline-block';
-    fabBtn.style.display = 'block';
-  } else {
-    currentUser = null;
-    userNameEl.textContent = '';
-    loginBtn.style.display = 'inline-block';
-    logoutBtn.style.display = 'none';
-    fabBtn.style.display = 'none';
-    newPostSection.classList.add('hidden');
-  }
-});
-
-// Toggle sezione nuovo annuncio
-fabBtn.addEventListener('click', () => {
-  newPostSection.classList.remove('hidden');
-  fabBtn.style.display = 'none';
-});
-closeNewPostBtn.addEventListener('click', () => {
-  newPostSection.classList.add('hidden');
-  fabBtn.style.display = 'block';
-});
-
-// GEO
-function requestPosition() {
-  if (!navigator.geolocation) {
-    alert('Geolocalizzazione non supportata.');
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(pos => {
-    currentPosition = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-    subscribeToPosts();
-  }, err => {
-    alert('Posizione non disponibile: ' + err.message);
-  }, {enableHighAccuracy:true, maximumAge:60000});
-}
-requestPosition();
-
-// Pubblica
-postBtn.addEventListener('click', async () => {
-  if (!currentUser) return alert('Effettua il login.');
-  if (!currentPosition) return alert('Posizione non disponibile.');
-  const title = document.getElementById('title').value.trim();
-  const desc = document.getElementById('desc').value.trim();
-  const expiry = document.getElementById('expiry').value;
-  if (!title || !desc || !expiry) return alert('Compila tutti i campi.');
-
-  await db.collection('posts').add({
-    title, desc, expiry,
-    lat: currentPosition.lat,
-    lng: currentPosition.lng,
-    userId: currentUser.uid,
-    userName: currentUser.displayName,
-    reservedBy: null,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  document.getElementById('title').value = '';
-  document.getElementById('desc').value = '';
-  document.getElementById('expiry').value = '';
-  newPostSection.classList.add('hidden');
-  fabBtn.style.display = 'block';
-});
-
-refreshBtn.addEventListener('click', () => subscribeToPosts(true));
-
-let unsubscribe = null;
-function subscribeToPosts(forceReload=false) {
-  if (!currentPosition) return;
-  if (unsubscribe && !forceReload) return;
-  if (unsubscribe) unsubscribe();
-  unsubscribe = db.collection('posts')
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(snapshot => {
-      postsList.innerHTML = '';
-      const maxDist = parseFloat(maxDistanceInput.value) || 5;
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (!data.lat || !data.lng) return;
-        const dist = distance(currentPosition.lat, currentPosition.lng, data.lat, data.lng);
-        if (dist <= maxDist) {
-          const li = document.createElement('li');
-          li.innerHTML = `<strong>${escapeHtml(data.title)}</strong> — ${escapeHtml(data.desc)}
-            <div class="muted">Scadenza: ${escapeHtml(data.expiry)} • Offerto da: ${escapeHtml(data.userName)} • ${dist.toFixed(1)} km</div>
-            <div>${data.reservedBy ? '<em>Già prenotato</em>' : '<button class="primary-btn reserve-btn" data-id="'+doc.id+'">Prenota</button>'}</div>`;
-          postsList.appendChild(li);
-        }
-      });
-      document.querySelectorAll('.reserve-btn').forEach(btn=>{
-        btn.addEventListener('click', async ev => {
-          const id = ev.currentTarget.dataset.id;
-          if (!currentUser) return alert('Accedi per prenotare.');
-          try {
-            const ref = db.collection('posts').doc(id);
-            await db.runTransaction(async (t) => {
-              const snap = await t.get(ref);
-              if (!snap.exists) throw 'Annuncio non trovato';
-              if (snap.data().reservedBy) throw 'Già prenotato';
-              t.update(ref, { reservedBy: currentUser.uid });
-            });
-            alert('Prenotazione registrata.');
-          } catch(err) {
-            alert('Errore: ' + err);
-          }
-        });
-      });
-    });
-}
-
-function distance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const toRad = v => v * Math.PI / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+let currentUser=null,currentPosition=null,activeChat=null;
+const loginBtn=document.getElementById('login-btn'),logoutBtn=document.getElementById('logout-btn'),userNameEl=document.getElementById('user-name'),newPostSection=document.getElementById('new-post'),postBtn=document.getElementById('post-btn'),postsList=document.getElementById('posts-list'),maxDistanceInput=document.getElementById('max-distance'),refreshBtn=document.getElementById('refresh-btn'),fabBtn=document.getElementById('fab-btn'),closeNewPostBtn=document.getElementById('close-new-post');
+const chatWindow=document.getElementById('chatWindow'),chatTitle=document.getElementById('chatTitle'),chatMessages=document.getElementById('chatMessages'),chatInput=document.getElementById('chatInput'),sendBtn=document.getElementById('sendBtn'),closeChatBtn=document.getElementById('closeChatBtn');
+loginBtn.addEventListener('click',()=>{const p=new firebase.auth.GoogleAuthProvider();auth.signInWithPopup(p).catch(e=>alert(e.message));});logoutBtn.addEventListener('click',()=>auth.signOut());
+auth.onAuthStateChanged(user=>{if(user){currentUser=user;userNameEl.textContent=`Ciao, ${user.displayName}`;loginBtn.style.display='none';logoutBtn.style.display='inline-block';fabBtn.style.display='block'}else{currentUser=null;userNameEl.textContent='';loginBtn.style.display='inline-block';logoutBtn.style.display='none';fabBtn.style.display='none';newPostSection.classList.add('hidden');closeChat();}});
+fabBtn.addEventListener('click',()=>{newPostSection.classList.remove('hidden');fabBtn.style.display='none';document.getElementById('title').focus();});closeNewPostBtn.addEventListener('click',()=>{newPostSection.classList.add('hidden');fabBtn.style.display='block';});
+function requestPosition(){if(!navigator.geolocation){alert('Geolocalizzazione non supportata.');return;}navigator.geolocation.getCurrentPosition(pos=>{currentPosition={lat:pos.coords.latitude,lng:pos.coords.longitude};subscribeToPosts();},err=>{console.warn('Posizione non disponibile: '+err.message);},{enableHighAccuracy:true,maximumAge:60000});}requestPosition();
+postBtn.addEventListener('click',async()=>{if(!currentUser)return alert('Effettua il login.');if(!currentPosition)return alert('Posizione non disponibile.');const title=document.getElementById('title').value.trim();const desc=document.getElementById('desc').value.trim();const expiry=document.getElementById('expiry').value;const quantity=parseInt(document.getElementById('quantity').value)||null;if(!title||!desc||!expiry)return alert('Compila tutti i campi.');try{await db.collection('posts').add({title,desc,expiry,lat:currentPosition.lat,lng:currentPosition.lng,userId:currentUser.uid,userName:currentUser.displayName||null,userEmail:currentUser.email||null,quantity:quantity,prenotazioni:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});document.getElementById('title').value='';document.getElementById('desc').value='';document.getElementById('expiry').value='';document.getElementById('quantity').value='';newPostSection.classList.add('hidden');fabBtn.style.display='block';}catch(err){alert('Errore pubblicazione: '+err.message);} });
+refreshBtn.addEventListener('click',()=>subscribeToPosts(true));
+let unsubscribe=null,chatUnsubscribe=null;
+function subscribeToPosts(forceReload=false){if(!currentPosition)return; if(unsubscribe&& !forceReload) return; if(unsubscribe) unsubscribe(); unsubscribe=db.collection('posts').orderBy('createdAt','desc').onSnapshot(snapshot=>{postsList.innerHTML='';const maxDist=parseFloat(maxDistanceInput.value)||5;snapshot.forEach(doc=>{const data=doc.data(); if(!data.lat||!data.lng) return; const dist=distance(currentPosition.lat,currentPosition.lng,data.lat,data.lng); if(dist<=maxDist){const li=document.createElement('li');li.className='post-item';const main=document.createElement('div');main.className='post-main';const actions=document.createElement('div');actions.className='post-actions';main.innerHTML=`<strong>${escapeHtml(data.title)}</strong><div>${escapeHtml(data.desc)}</div><div class="post-meta">Scadenza: ${escapeHtml(data.expiry||'')} • Offerto da: ${escapeHtml(data.userName||'Anonimo')} • ${dist.toFixed(1)} km</div>`;const prenCount=Array.isArray(data.prenotazioni)?data.prenotazioni.length:0;const prenText=document.createElement('div');prenText.className='muted';prenText.textContent=`Prenotati: ${prenCount}`;const btnPren=document.createElement('button');btnPren.className='primary-btn';btnPren.textContent='Prenota';btnPren.addEventListener('click',async()=>{if(!currentUser) return alert('Accedi per prenotare.');try{const ref=db.collection('posts').doc(doc.id);await ref.update({prenotazioni:firebase.firestore.FieldValue.arrayUnion(currentUser.uid)});}catch(err){alert('Errore prenotazione: '+err.message);} });const btnContatta=document.createElement('button');btnContatta.className='secondary-btn';btnContatta.textContent='Contatta';btnContatta.addEventListener('click',()=>{if(!currentUser) return alert('Accedi per contattare.');openChatWith(data.userId,data.userName||'Autore',data.userEmail||null);});main.appendChild(prenText);actions.appendChild(btnPren);actions.appendChild(btnContatta);li.appendChild(main);li.appendChild(actions);postsList.appendChild(li);}});},err=>console.error('Snapshot error',err));}
+function openChatWith(otherUid,otherName,otherEmail){if(!currentUser) return alert('Accedi per chattare.');const uidA=currentUser.uid;const uidB=otherUid; if(!uidB) return alert('Utente non disponibile per la chat.'); const chatId=[uidA,uidB].sort().join('_'); const chatRef=db.collection('messages').doc(chatId); activeChat={chatId,otherUid:uidB,otherName,otherEmail}; chatTitle.textContent=otherName||'Chat'; chatWindow.classList.remove('hidden'); chatWindow.setAttribute('aria-hidden','false'); chatMessages.innerHTML='<div class="muted">Caricamento messaggi…</div>'; chatRef.get().then(doc=>{if(!doc.exists){chatRef.set({participants:[uidA,uidB],messages:[]});}}); if(chatUnsubscribe) chatUnsubscribe(); chatUnsubscribe=chatRef.onSnapshot(doc=>{if(!doc.exists) return; const data=doc.data(); const msgs=Array.isArray(data.messages)?data.messages:[]; renderMessages(msgs);});}
+sendBtn.addEventListener('click',async()=>{const text=chatInput.value.trim(); if(!text||!activeChat) return; const chatRef=db.collection('messages').doc(activeChat.chatId); const msgObj={sender:currentUser.uid,text,timestamp:Date.now()}; try{await chatRef.update({messages:firebase.firestore.FieldValue.arrayUnion(msgObj)}); chatInput.value='';}catch(err){alert('Errore invio messaggio: '+err.message);} });
+chatInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendBtn.click();}});closeChatBtn.addEventListener('click',closeChat);
+function closeChat(){if(chatUnsubscribe) chatUnsubscribe(); chatUnsubscribe=null; activeChat=null; chatWindow.classList.add('hidden'); chatWindow.setAttribute('aria-hidden','true'); chatMessages.innerHTML='';}
+function renderMessages(msgs){chatMessages.innerHTML=''; msgs.sort((a,b)=>(a.timestamp||0)-(b.timestamp||0)); msgs.forEach(m=>{const div=document.createElement('div');div.className='chat-msg '+(m.sender===currentUser.uid?'me':'them');div.textContent=m.text;chatMessages.appendChild(div);}); chatMessages.scrollTop=chatMessages.scrollHeight;}
+function distance(lat1,lon1,lat2,lon2){const R=6371;const toRad=v=>v*Math.PI/180;const dLat=toRad(lat2-lat1);const dLon=toRad(lon2-lon1);const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+function escapeHtml(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
