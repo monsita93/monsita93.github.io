@@ -143,7 +143,6 @@
   </div>
   <div class="modal-body">
     <div class="row" style="gap:12px">
-      <img id="dImg" class="thumb" style="width:120px;height:120px" alt=""/>
       <div style="flex:1">
         <div id="dDesc"></div>
         <div class="muted" id="dPickup"></div>
@@ -323,7 +322,6 @@
       const dist = haversine(myPos.lat,myPos.lng,p.location.lat,p.location.lng).toFixed(1);
       const el = document.createElement('div'); el.className='card item';
       el.innerHTML = `
-        <img class="thumb" src="${p.imageUrl}" alt=""/>
         <div>
           <div class="row" style="justify-content:space-between">
             <div class="title">${p.title}</div>
@@ -347,7 +345,6 @@
     const p = snap.data(); p.id=productId; currentProduct = p;
 
     $('dTitle').textContent = p.title;
-    $('dImg').src = p.imageUrl;
     $('dDesc').textContent = p.description;
     $('dPickup').textContent = 'Ritiro: ' + (p.pickupDetails||'-');
     $('dExpiry').textContent = 'Scadenza: ' + fmtDate(p.expiryDate);
@@ -478,7 +475,7 @@
       my.forEach(p=>{
         const el=document.createElement('div'); el.className='card item';
         const status = p.assignedTo? `Assegnato a ${p.assignedTo}` : 'Non assegnato';
-        el.innerHTML=`<img class="thumb" src="${p.imageUrl}"/><div><div class="title">${p.title}</div><div class="muted">${status}</div><div class="row" style="margin-top:8px"><button class="btn" data-id="${p.id}">Gestisci</button></div></div>`;
+        el.innerHTML=`<div><div class="title">${p.title}</div><div class="muted">${status}</div><div class="row" style="margin-top:8px"><button class="btn" data-id="${p.id}">Gestisci</button></div></div>`;
         el.querySelector('button').onclick=()=>openDetail(p.id);
         box.appendChild(el);
       });
@@ -492,7 +489,7 @@
         const el=document.createElement('div'); el.className='card item';
         const youAssigned = p.assignedTo===me.uid;
         const status = youAssigned? 'Sei assegnatario ✅' : 'In attesa';
-        el.innerHTML=`<img class="thumb" src="${p.imageUrl}"/><div><div class="title">${p.title}</div><div class="muted">${status}</div><div class="row" style="margin-top:8px"><button class="btn" data-id="${p.id}">Dettagli</button><button class="btn btn-outline" data-chat="1">Chat proprietario</button></div></div>`;
+        el.innerHTML=`<div><div class="title">${p.title}</div><div class="muted">${status}</div><div class="row" style="margin-top:8px"><button class="btn" data-id="${p.id}">Dettagli</button><button class="btn btn-outline" data-chat="1">Chat proprietario</button></div></div>`;
         el.querySelector('button[data-id]').onclick=()=>openDetail(p.id);
         el.querySelector('button[data-chat]')?.addEventListener('click',()=>openChat(p.id, p.ownerId));
         box.appendChild(el);
