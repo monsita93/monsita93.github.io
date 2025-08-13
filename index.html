@@ -95,10 +95,12 @@
             <input id="pickup" placeholder="Via Roma 10, citofono Rossi" />
           </div>
         </div>
+		<!--
         <div>
           <label for="image">Immagine</label>
           <input id="image" type="file" accept="image/*" />
         </div>
+		-->
         <div class="row">
           <button id="publishBtn">Pubblica</button>
           <span class="muted" id="publishHint">Devi essere autenticato</span>
@@ -271,20 +273,14 @@
     const description = $('desc').value.trim();
     const pickup = $('pickup').value.trim();
     const expiryRaw = $('expiry').value;
-    const file = $('image').files[0];
-    if(!title || !description || !pickup || !expiryRaw || !file){
+    if(!title || !description || !pickup || !expiryRaw ){
       alert('Compila tutti i campi e seleziona una immagine'); return;
     }
     const expiryDate = new Date(expiryRaw);
-    // upload immagine
-    const path = `products/${me.uid}/${Date.now()}_${file.name}`;
-    const r = sRef(storage, path);
-    await uploadBytes(r, file);
-    const imageUrl = await getDownloadURL(r);
-
+    
     const docRef = await addDoc(collection(db,'products'), {
       ownerId: me.uid,
-      title, description, imageUrl,
+      title, description, 
       location: { lat: myPos.lat, lng: myPos.lng },
       pickupDetails: pickup,
       expiryDate: expiryDate.getTime(),
@@ -297,7 +293,6 @@
     $('desc').value = '';
     $('pickup').value = '';
     $('expiry').value = '';
-    $('image').value = '';
     alert('Annuncio pubblicato!');
     refreshList();
     renderMine();
