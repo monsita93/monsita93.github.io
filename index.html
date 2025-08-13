@@ -1,46 +1,565 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FoodShare</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ShareFood – prototipo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#FFF8F0; --primary:#FF8C42; --primary-600:#f47a28; --accent:#4CAF50; --text:#1b1b1b; --muted:#666; --card:#ffffff;
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text)}
+    header{position:sticky; top:0; z-index:10; background:var(--card); border-bottom:1px solid #eee}
+    .bar{display:flex; align-items:center; gap:12px; padding:12px 16px; max-width:900px; margin:0 auto}
+    .brand{font-weight:700; color:var(--primary)}
+    .spacer{flex:1}
+    button, .btn{background:var(--primary); color:#fff; border:none; border-radius:999px; padding:10px 14px; font-weight:600; cursor:pointer}
+    button:disabled{opacity:.6; cursor:not-allowed}
+    .btn-outline{background:transparent; color:var(--primary); border:2px solid var(--primary)}
+    main{max-width:900px; margin:16px auto; padding:0 16px;}
+    .card{background:var(--card); border:1px solid #eee; border-radius:var(--radius); box-shadow:0 2px 8px rgba(0,0,0,.04);}
+    .section{padding:12px}
+    .grid{display:grid; gap:12px}
+    .grid-cols{grid-template-columns:1fr}
+    @media(min-width:740px){ .grid-cols{grid-template-columns:260px 1fr} }
+    label{font-size:.875rem; color:var(--muted); display:block; margin-bottom:6px}
+    input, textarea, select{width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:12px; font-size:1rem; background:#fff}
+    input[type="date"]{padding:8px 12px}
+    .row{display:flex; gap:8px; align-items:center}
+    .muted{color:var(--muted)}
+    .pill{background:#f6f6f6; padding:6px 10px; border-radius:999px; font-size:.85rem}
+    .list{display:grid; gap:12px}
+    .item{display:grid; grid-template-columns:84px 1fr; gap:12px; padding:10px}
+    .thumb{width:84px; height:84px; border-radius:12px; object-fit:cover; background:#f2f2f2}
+    .title{font-weight:700}
+    .right{justify-self:end; text-align:right}
+    .danger{background:#e53935}
+    .success{background:var(--accent)}
+
+    /* Modal */
+    dialog{border:none; border-radius:16px; width:min(720px,95vw); padding:0; box-shadow:0 20px 50px rgba(0,0,0,.2)}
+    dialog::backdrop{background:rgba(0,0,0,.35)}
+    .modal-head{padding:12px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:8px}
+    .modal-body{padding:12px 16px}
+    .close{margin-left:auto; background:transparent; color:var(--muted); border:1px solid #ddd}
+
+    /* Chat */
+    .chat{height:55vh; overflow:auto; padding:8px}
+    .bubble{max-width:78%; padding:10px 12px; border-radius:14px; margin:6px 0; background:#f1f5f9}
+    .me{background:#DCFCE7; margin-left:auto}
+
+    .footerbar{position:sticky; bottom:0; background:#fff; border-top:1px solid #eee; padding:8px}
+    .inline{display:flex; gap:8px}
+  </style>
 </head>
 <body>
 <header>
-  <h1>FoodShare</h1>
-  <button id="loginBtn">Login con Google</button>
-  <button id="logoutBtn" style="display:none;">Logout</button>
+  <div class="bar">
+    <div class="brand">🍊 ShareFood</div>
+    <div id="locDisplay" class="pill">Posizione: …</div>
+    <div class="spacer"></div>
+    <div id="authBox" class="row">
+      <img id="userAvatar" alt="" style="width:28px;height:28px;border-radius:999px;display:none"/>
+      <span id="userName" class="muted"></span>
+      <button id="loginBtn" class="btn">Accedi con Google</button>
+      <button id="logoutBtn" class="btn btn-outline" style="display:none">Esci</button>
+    </div>
+  </div>
 </header>
 
 <main>
-  <div id="annunci"></div>
+  <div class="grid grid-cols">
+    <section class="card section">
+      <h3 style="margin:6px 0">Crea annuncio</h3>
+      <div class="grid" style="gap:10px">
+        <div>
+          <label for="title">Titolo</label>
+          <input id="title" placeholder="Es. Yogurt in scadenza" />
+        </div>
+        <div>
+          <label for="desc">Descrizione</label>
+          <textarea id="desc" rows="3" placeholder="Breve descrizione…"></textarea>
+        </div>
+        <div class="row">
+          <div style="flex:1">
+            <label for="expiry">Scadenza</label>
+            <input id="expiry" type="date" />
+          </div>
+          <div style="flex:1">
+            <label for="pickup">Dettagli ritiro (via, citofono…)</label>
+            <input id="pickup" placeholder="Via Roma 10, citofono Rossi" />
+          </div>
+        </div>
+        <div>
+          <label for="image">Immagine</label>
+          <input id="image" type="file" accept="image/*" />
+        </div>
+        <div class="row">
+          <button id="publishBtn">Pubblica</button>
+          <span class="muted" id="publishHint">Devi essere autenticato</span>
+        </div>
+      </div>
+    </section>
 
-  <!-- Floating Action Button -->
-  <button id="fab">+</button>
-
-  <!-- Pannello nuovo annuncio -->
-  <div id="nuovoAnnuncioPanel" class="hidden">
-    <h2>Nuovo annuncio</h2>
-    <input id="titolo" placeholder="Titolo">
-    <input id="descrizione" placeholder="Descrizione">
-    <input id="luogo" placeholder="Luogo">
-    <button id="pubblica">Pubblica</button>
-    <button id="chiudiPanel">Chiudi</button>
+    <section class="card section">
+      <div class="row" style="justify-content:space-between">
+        <div class="row" style="gap:10px">
+          <h3 style="margin:6px 0">Annunci vicini</h3>
+          <span id="count" class="pill">0</span>
+        </div>
+        <div class="row">
+          <label for="radius">Raggio</label>
+          <input id="radius" type="range" min="1" max="20" step="1" value="5" />
+          <span id="radiusLabel" class="pill">5 km</span>
+        </div>
+      </div>
+      <div id="list" class="list"></div>
+    </section>
   </div>
 
-  <!-- Chat -->
-  <div id="chatWindow" class="hidden">
-    <div id="chatMessages"></div>
-    <input id="chatInput" placeholder="Scrivi un messaggio...">
-    <button id="sendMsg">Invia</button>
-    <button id="closeChat">Chiudi Chat</button>
-  </div>
+  <section class="card section">
+    <h3 style="margin:6px 0">Le mie cose</h3>
+    <div class="row" style="flex-wrap:wrap; gap:8px">
+      <button id="myAdsBtn" class="btn btn-outline">I miei annunci</button>
+      <button id="myCandsBtn" class="btn btn-outline">Le mie candidature</button>
+      <button id="myChatsBtn" class="btn btn-outline">Chat</button>
+    </div>
+    <div id="mine" class="list" style="margin-top:10px"></div>
+  </section>
 </main>
 
-<script src="app.js"></script>
+<!-- Modale dettaglio annuncio -->
+<dialog id="detailDlg">
+  <div class="modal-head">
+    <strong id="dTitle">Dettaglio</strong>
+    <button class="close" onclick="detailDlg.close()">Chiudi</button>
+  </div>
+  <div class="modal-body">
+    <div class="row" style="gap:12px">
+      <img id="dImg" class="thumb" style="width:120px;height:120px" alt=""/>
+      <div style="flex:1">
+        <div id="dDesc"></div>
+        <div class="muted" id="dPickup"></div>
+        <div class="muted" id="dExpiry"></div>
+        <div class="muted" id="dDistance"></div>
+      </div>
+    </div>
+    <div id="ownerTools" style="margin-top:12px; display:none">
+      <h4>Candidati</h4>
+      <div id="cands"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="applyBtn" class="btn">Candidati</button>
+      <button id="withdrawBtn" class="btn btn-outline" style="display:none">Annulla candidatura</button>
+      <button id="chatOwnerBtn" class="btn btn-outline" style="display:none">Chatta con il proprietario</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Modale chat -->
+<dialog id="chatDlg">
+  <div class="modal-head">
+    <strong id="chatTitle">Chat</strong>
+    <button class="close" onclick="closeChat()">Chiudi</button>
+  </div>
+  <div class="modal-body">
+    <div id="chatMessages" class="chat card"></div>
+    <div class="footerbar">
+      <div class="inline">
+        <input id="chatInput" placeholder="Scrivi un messaggio…" />
+        <button id="sendMsgBtn">Invia</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- Firebase SDKs (v9 modular CDN) -->
+<script type="module">
+  // TODO: Incolla qui la tua configurazione Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCHN6FisiuH2JwboVcyrlg1UHnsLNAIWDE",
+            authDomain: "foodshare-app-ff567.firebaseapp.com",
+            databaseURL: "https://foodshare-app-ff567-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "foodshare-app-ff567",
+            storageBucket: "foodshare-app-ff567.firebasestorage.app",
+            messagingSenderId: "120193233604",
+            appId: "1:120193233604:web:fa7afd4bde94b558378f91",
+            measurementId: "G-2B7P1JMHES"
+        };
+
+  // --- Firebase imports ---
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+  import { getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, query, where, orderBy, serverTimestamp, updateDoc, onSnapshot, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+  import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  // --- Stato globale ---
+  let me = null; // utente autenticato
+  let myPos = null; // {lat,lng}
+  let currentProduct = null; // doc reference oggetto
+  let chatUnsub = null; // listener chat
+  let currentChat = { chatId:null, otherId:null, productId:null };
+
+  // --- Utility ---
+  const $ = (id)=>document.getElementById(id);
+  const fmtDate = (d)=> new Date(d).toLocaleDateString('it-IT');
+  function haversine(lat1, lon1, lat2, lon2){
+    const R=6371; const toRad = (x)=>x*Math.PI/180;
+    const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+    const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+  function todayMidnight(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+  function uidPair(a,b){ return [a,b].sort().join('_'); }
+
+  // --- Auth UI ---
+  const loginBtn = $('loginBtn');
+  const logoutBtn = $('logoutBtn');
+  loginBtn.onclick = async ()=>{
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  }
+  logoutBtn.onclick = ()=>signOut(auth);
+
+  onAuthStateChanged(auth, async (user)=>{
+    me = user;
+    $('userAvatar').style.display = user? 'block':'none';
+    $('userName').textContent = user? (user.displayName||'') : '';
+    $('loginBtn').style.display = user? 'none':'inline-block';
+    $('logoutBtn').style.display = user? 'inline-block':'none';
+    $('publishHint').textContent = user? 'Pronto a pubblicare' : 'Devi essere autenticato';
+    if(user){
+      $('userAvatar').src = user.photoURL || '';
+      // crea/aggiorna profilo base
+      await setDoc(doc(db,'users', user.uid), {
+        displayName: user.displayName||'',
+        photoURL: user.photoURL||'',
+        email: user.email||'',
+        updatedAt: serverTimestamp()
+      }, { merge:true });
+    }
+    renderMine();
+  });
+
+  // --- Geolocalizzazione ---
+  function setLocLabel(lat,lng){
+    $('locDisplay').textContent = `Posizione: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  }
+  navigator.geolocation.getCurrentPosition((pos)=>{
+    myPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    setLocLabel(myPos.lat, myPos.lng);
+    refreshList();
+  }, (err)=>{
+    $('locDisplay').textContent = 'Posizione: non disponibile';
+  }, { enableHighAccuracy:true, timeout:10000 });
+
+  // --- Pubblicazione annuncio ---
+  $('publishBtn').onclick = async ()=>{
+    if(!me){ alert('Accedi per pubblicare'); return; }
+    if(!myPos){ alert('Posizione non disponibile'); return; }
+    const title = $('title').value.trim();
+    const description = $('desc').value.trim();
+    const pickup = $('pickup').value.trim();
+    const expiryRaw = $('expiry').value;
+    const file = $('image').files[0];
+    if(!title || !description || !pickup || !expiryRaw || !file){
+      alert('Compila tutti i campi e seleziona una immagine'); return;
+    }
+    const expiryDate = new Date(expiryRaw);
+    // upload immagine
+    const path = `products/${me.uid}/${Date.now()}_${file.name}`;
+    const r = sRef(storage, path);
+    await uploadBytes(r, file);
+    const imageUrl = await getDownloadURL(r);
+
+    const docRef = await addDoc(collection(db,'products'), {
+      ownerId: me.uid,
+      title, description, imageUrl,
+      location: { lat: myPos.lat, lng: myPos.lng },
+      pickupDetails: pickup,
+      expiryDate: expiryDate.getTime(),
+      createdAt: serverTimestamp(),
+      candidates: [],
+      assignedTo: null
+    });
+    // pulizia form
+    $('title').value = '';
+    $('desc').value = '';
+    $('pickup').value = '';
+    $('expiry').value = '';
+    $('image').value = '';
+    alert('Annuncio pubblicato!');
+    refreshList();
+    renderMine();
+  }
+
+  // --- Lista annunci vicini ---
+  $('radius').addEventListener('input', ()=>{
+    $('radiusLabel').textContent = $('radius').value + ' km';
+  });
+  $('radius').addEventListener('change', refreshList);
+
+  async function refreshList(){
+    if(!myPos) return;
+    const list = $('list'); list.innerHTML = '<div class="muted">Caricamento…</div>';
+    // prende ultimi 100 annunci non scaduti, poi filtra per distanza client-side
+    const now = todayMidnight().getTime();
+    const qSnap = await getDocs(query(collection(db,'products'), orderBy('createdAt','desc')));
+    const items = [];
+    qSnap.forEach(d=>{
+      const p = d.data(); p.id=d.id;
+      if(p.expiryDate >= now) items.push(p);
+    });
+    const radiusKm = parseInt($('radius').value,10);
+    const nearby = items.filter(p=>haversine(myPos.lat,myPos.lng,p.location.lat,p.location.lng) <= radiusKm);
+    $('count').textContent = nearby.length;
+    list.innerHTML = '';
+    nearby.forEach(p=>{
+      const dist = haversine(myPos.lat,myPos.lng,p.location.lat,p.location.lng).toFixed(1);
+      const el = document.createElement('div'); el.className='card item';
+      el.innerHTML = `
+        <img class="thumb" src="${p.imageUrl}" alt=""/>
+        <div>
+          <div class="row" style="justify-content:space-between">
+            <div class="title">${p.title}</div>
+            <div class="muted">${dist} km</div>
+          </div>
+          <div class="muted">Scade: ${fmtDate(p.expiryDate)}</div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn" data-id="${p.id}">Dettagli</button>
+          </div>
+        </div>`;
+      el.querySelector('button').onclick = ()=>openDetail(p.id);
+      list.appendChild(el);
+    });
+  }
+
+  // --- Dettaglio & candidature ---
+  async function openDetail(productId){
+    const ref = doc(db,'products',productId);
+    const snap = await getDoc(ref);
+    if(!snap.exists()) return alert('Annuncio non trovato');
+    const p = snap.data(); p.id=productId; currentProduct = p;
+
+    $('dTitle').textContent = p.title;
+    $('dImg').src = p.imageUrl;
+    $('dDesc').textContent = p.description;
+    $('dPickup').textContent = 'Ritiro: ' + (p.pickupDetails||'-');
+    $('dExpiry').textContent = 'Scadenza: ' + fmtDate(p.expiryDate);
+    const dist = myPos? haversine(myPos.lat,myPos.lng,p.location.lat,p.location.lng).toFixed(1):'?';
+    $('dDistance').textContent = 'Distanza: ' + dist + ' km';
+
+    // Stato candidatura
+    const isCandidate = me && (p.candidates||[]).some(c=>c.userId===me.uid);
+    $('applyBtn').style.display = (me && !isCandidate && (!p.assignedTo) && Date.now() <= p.expiryDate)? 'inline-block':'none';
+    $('withdrawBtn').style.display = (me && isCandidate && (!p.assignedTo) && Date.now() <= p.expiryDate)? 'inline-block':'none';
+    $('chatOwnerBtn').style.display = (me && me.uid!==p.ownerId)? 'inline-block':'none';
+
+    // Strumenti proprietario
+    const ownerTools = $('ownerTools');
+    if(me && me.uid===p.ownerId){
+      ownerTools.style.display='block';
+      renderCandidates(p);
+    } else {
+      ownerTools.style.display='none';
+      $('cands').innerHTML='';
+    }
+
+    $('applyBtn').onclick = ()=>applyToProduct(p);
+    $('withdrawBtn').onclick = ()=>withdrawFromProduct(p);
+    $('chatOwnerBtn').onclick = ()=>openChat(p.id, p.ownerId);
+
+    $('detailDlg').showModal();
+  }
+
+  async function applyToProduct(p){
+    if(!me) return alert('Accedi per candidarti');
+    if(Date.now()>p.expiryDate) return alert('Annuncio scaduto');
+    const ref = doc(db,'products',p.id);
+    const cand = { userId: me.uid, createdAt: Date.now() };
+    await updateDoc(ref, { candidates: arrayUnion(cand) });
+    alert('Candidatura inviata');
+    openDetail(p.id);
+    renderMine();
+  }
+
+  async function withdrawFromProduct(p){
+    if(!me) return;
+    const ref = doc(db,'products',p.id);
+    const existing = (p.candidates||[]).find(c=>c.userId===me.uid);
+    if(!existing) return;
+    await updateDoc(ref, { candidates: arrayRemove(existing) });
+    alert('Candidatura annullata');
+    openDetail(p.id);
+    renderMine();
+  }
+
+  async function assignProduct(pId, userId){
+    const ref = doc(db,'products',pId);
+    await updateDoc(ref, { assignedTo: userId });
+    alert('Prodotto assegnato');
+    openDetail(pId);
+    renderMine();
+  }
+
+  function renderCandidates(p){
+    const box = $('cands');
+    box.innerHTML = '';
+    if(!p.candidates || p.candidates.length===0){ box.innerHTML = '<div class="muted">Nessuna candidatura</div>'; return; }
+    p.candidates.sort((a,b)=>a.createdAt-b.createdAt);
+    p.candidates.forEach(c=>{
+      const row = document.createElement('div'); row.className='row'; row.style.justifyContent='space-between'; row.style.margin='6px 0';
+      const left = document.createElement('div'); left.textContent = c.userId; left.className='pill';
+      const right = document.createElement('div');
+      const chatBtn = document.createElement('button'); chatBtn.className='btn btn-outline'; chatBtn.textContent='Chat'; chatBtn.onclick=()=>openChat(p.id, c.userId);
+      const assignBtn = document.createElement('button'); assignBtn.className='btn success'; assignBtn.textContent='Assegna'; assignBtn.onclick=()=>assignProduct(p.id, c.userId);
+      right.appendChild(chatBtn); right.appendChild(assignBtn);
+      row.appendChild(left); row.appendChild(right);
+      box.appendChild(row);
+    });
+  }
+
+  // --- Chat ---
+  async function openChat(productId, otherUserId){
+    if(!me) return alert('Accedi per chattare');
+    const chatId = productId + '_' + uidPair(me.uid, otherUserId);
+    currentChat = { chatId, otherId: otherUserId, productId };
+    $('chatTitle').textContent = 'Chat';
+    $('chatMessages').innerHTML = '';
+    $('chatDlg').showModal();
+
+    // crea documento chat se non esiste
+    const cRef = doc(db,'chats',chatId);
+    const cSnap = await getDoc(cRef);
+    if(!cSnap.exists()){
+      await setDoc(cRef, { participants: [me.uid, otherUserId], productId, createdAt: serverTimestamp() });
+    }
+
+    if(chatUnsub) chatUnsub();
+    chatUnsub = onSnapshot(query(collection(db,'chats',chatId,'messages'), orderBy('createdAt','asc')), (qs)=>{
+      const box = $('chatMessages'); box.innerHTML='';
+      qs.forEach(m=>{
+        const d=m.data();
+        const bubble=document.createElement('div');
+        bubble.className='bubble'+(d.senderId===me.uid?' me':'');
+        bubble.textContent=d.text;
+        box.appendChild(bubble);
+      });
+      box.scrollTop = box.scrollHeight;
+    });
+  }
+
+  function closeChat(){ if(chatUnsub) chatUnsub(); $('chatDlg').close(); }
+  $('sendMsgBtn').onclick = async ()=>{
+    const text = $('chatInput').value.trim(); if(!text) return;
+    const mRef = collection(db,'chats', currentChat.chatId, 'messages');
+    await addDoc(mRef, { senderId: me.uid, text, createdAt: serverTimestamp() });
+    $('chatInput').value='';
+  }
+
+  // --- Le mie sezioni ---
+  $('myAdsBtn').onclick = ()=>renderMine('ads');
+  $('myCandsBtn').onclick = ()=>renderMine('cands');
+  $('myChatsBtn').onclick = ()=>renderMine('chats');
+
+  async function renderMine(section='ads'){
+    const box = $('mine'); box.innerHTML='';
+    if(!me){ box.innerHTML = '<div class="muted">Accedi per vedere i tuoi dati</div>'; return; }
+
+    if(section==='ads'){
+      const qs = await getDocs(query(collection(db,'products')));
+      const my = []; qs.forEach(d=>{ const p=d.data(); p.id=d.id; if(p.ownerId===me.uid) my.push(p); });
+      if(my.length===0){ box.innerHTML='<div class="muted">Nessun annuncio</div>'; return; }
+      my.forEach(p=>{
+        const el=document.createElement('div'); el.className='card item';
+        const status = p.assignedTo? `Assegnato a ${p.assignedTo}` : 'Non assegnato';
+        el.innerHTML=`<img class="thumb" src="${p.imageUrl}"/><div><div class="title">${p.title}</div><div class="muted">${status}</div><div class="row" style="margin-top:8px"><button class="btn" data-id="${p.id}">Gestisci</button></div></div>`;
+        el.querySelector('button').onclick=()=>openDetail(p.id);
+        box.appendChild(el);
+      });
+    }
+
+    if(section==='cands'){
+      const qs = await getDocs(query(collection(db,'products')));
+      const mine=[]; qs.forEach(d=>{ const p=d.data(); p.id=d.id; if((p.candidates||[]).some(c=>c.userId===me.uid)) mine.push(p); });
+      if(mine.length===0){ box.innerHTML='<div class="muted">Nessuna candidatura</div>'; return; }
+      mine.forEach(p=>{
+        const el=document.createElement('div'); el.className='card item';
+        const youAssigned = p.assignedTo===me.uid;
+        const status = youAssigned? 'Sei assegnatario ✅' : 'In attesa';
+        el.innerHTML=`<img class="thumb" src="${p.imageUrl}"/><div><div class="title">${p.title}</div><div class="muted">${status}</div><div class="row" style="margin-top:8px"><button class="btn" data-id="${p.id}">Dettagli</button><button class="btn btn-outline" data-chat="1">Chat proprietario</button></div></div>`;
+        el.querySelector('button[data-id]').onclick=()=>openDetail(p.id);
+        el.querySelector('button[data-chat]')?.addEventListener('click',()=>openChat(p.id, p.ownerId));
+        box.appendChild(el);
+      });
+    }
+
+    if(section==='chats'){
+      const qs = await getDocs(query(collection(db,'chats')));
+      const mine=[]; qs.forEach(d=>{ const c=d.data(); c.id=d.id; if((c.participants||[]).includes(me.uid)) mine.push(c); });
+      if(mine.length===0){ box.innerHTML='<div class="muted">Nessuna chat</div>'; return; }
+      mine.forEach(c=>{
+        const other = (c.participants||[]).find(x=>x!==me.uid) || 'utente';
+        const el=document.createElement('div'); el.className='card item';
+        el.innerHTML=`<div class="thumb" style="display:flex;align-items:center;justify-content:center;font-weight:700">💬</div><div><div class="title">Chat con ${other}</div><div class="muted">prod: ${c.productId||'-'}</div><div class="row" style="margin-top:8px"><button class="btn">Apri</button></div></div>`;
+        el.querySelector('button').onclick=()=>openChat(c.productId||'generic', other);
+        box.appendChild(el);
+      });
+    }
+  }
+
+  // refresh periodico lista (semplice)
+  setInterval(()=>{ refreshList(); }, 60*1000);
+</script>
+
+<!-- Note rapide
+1) Dopo aver creato il progetto Firebase, copia i valori firebaseConfig.
+2) Abilita Authentication > Sign-in method > Google.
+3) Firestore: modalità production. Storage: abilita bucket.
+4) Regole suggerite (adatta alle tue policy):
+
+// Firestore (semplificate, prototipo: *rendi più restrittive in produzione*)
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} { allow read: if request.auth!=null; allow write: if request.auth!=null && request.auth.uid==uid; }
+    match /products/{id} {
+      allow read: if true; // annunci pubblici
+      allow create: if request.auth!=null;
+      allow update: if request.auth!=null && (
+        // proprietario può aggiornare/assegnare
+        resource.data.ownerId == request.auth.uid ||
+        // candidato può rimuovere se stesso dall'array candidates
+        (request.resource.data.candidates.diff(resource.data.candidates).removed().size()==1 &&
+         request.resource.data.candidates.diff(resource.data.candidates).removed()[0].userId == request.auth.uid)
+      );
+    }
+    match /chats/{chatId} {
+      allow read, write: if request.auth!=null && request.resource.data.participants.hasAny([request.auth.uid]);
+      match /messages/{mid} { allow read, create: if request.auth!=null; }
+    }
+  }
+}
+
+// Storage (prototipo)
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /products/{uid}/{allPaths=**} {
+      allow read: if true; allow write: if request.auth!=null && request.auth.uid==uid;
+    }
+  }
+}
+-->
 </body>
 </html>
