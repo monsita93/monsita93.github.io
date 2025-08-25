@@ -8,7 +8,7 @@
             appId: "1:120193233604:web:fa7afd4bde94b558378f91",
             measurementId: "G-2B7P1JMHES"
         };
-		
+
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
@@ -130,6 +130,9 @@ function switchTab(tabName) {
         case 'messages':
             loadConversations();
             break;
+        case 'home':
+            loadRecentAds();
+            break;
     }
 }
 
@@ -224,46 +227,98 @@ async function performSearch() {
     }
 }
 
-// Load recent ads
+// Load viewed ads (for Home tab)
 async function loadRecentAds() {
     if (!userLocation) return;
     
     try {
-        const snapshot = await db.collection('ads')
-            .where('status', '==', 'active')
-            .where('expiryDate', '>', new Date())
-            .orderBy('expiryDate')
-            .orderBy('createdAt', 'desc')
-            .limit(20)
-            .get();
+        // Get user's viewed ads from localStorage equivalent (using a global variable)
+        const viewedAdIds = getViewedAds();
+        
+        if (viewedAdIds.length === 0) {
+            const container = document.getElementById('recentAds');
+            container.innerHTML = `
+                <div class="ad-card" style="text-align: center; color: #666;">
+                    <h3>👀 Nessun annuncio visualizzato</h3>
+                    <p>Gli annunci che visualizzerai nella ricerca appariranno qui</p>
+                </div>
+            `;
+            return;
+        }
         
         const ads = [];
-        snapshot.forEach(doc => {
-            const ad = { id: doc.id, ...doc.data() };
-            
-            // Skip own ads
-            if (ad.userId === currentUser.uid) return;
-            
-            // Calculate distance
-            const distance = calculateDistance(
-                userLocation.lat, userLocation.lng,
-                ad.location.lat, ad.location.lng
-            );
-            
-            // Only show ads within 20km
-            if (distance <= 20) {
-                ad.distance = distance;
-                ads.push(ad);
-            }
-        });
         
-        // Sort by distance
-        ads.sort((a, b) => a.distance - b.distance);
+        // Fetch each viewed ad
+        for (const adId of viewedAdIds) {
+            try {
+                const doc = await db.collection('ads').doc(adId).get();
+                if (doc.exists) {
+                    const ad = { id: doc.id, ...doc.data() };
+                    
+                    // Skip own ads and expired ads
+                    if (ad.userId === currentUser.uid) continue;
+                    if (ad.expiryDate.toDate() <= new Date()) continue;
+                    
+                    // Calculate distance
+                    const distance = calculateDistance(
+                        userLocation.lat, userLocation.lng,
+                        ad.location.lat, ad.location.lng
+                    );
+                    
+                    ad.distance = distance;
+                    ads.push(ad);
+                }
+            } catch (docError) {
+                console.warn('Error fetching viewed ad:', adId, docError);
+            }
+        }
+        
+        if (ads.length === 0) {
+            const container = document.getElementById('recentAds');
+            container.innerHTML = `
+                <div class="ad-card" style="text-align: center; color: #666;">
+                    <h3>📅 Nessun annuncio attivo</h3>
+                    <p>Gli annunci che hai visualizzato sono scaduti</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Sort by most recently viewed (reverse order)
+        const sortedIds = getViewedAds();
+        ads.sort((a, b) => {
+            const indexA = sortedIds.indexOf(a.id);
+            const indexB = sortedIds.indexOf(b.id);
+            return indexB - indexA; // More recent first
+        });
         
         displayAds(ads, 'recentAds');
         
     } catch (error) {
-        console.error('Load recent ads error:', error);
+        console.error('Load viewed ads error:', error);
+    }
+}
+
+// Viewed ads management (using memory storage since localStorage is not available)
+let viewedAdsCache = [];
+
+function getViewedAds() {
+    return [...viewedAdsCache];
+}
+
+function addViewedAd(adId) {
+    // Remove if already exists (to update position)
+    const index = viewedAdsCache.indexOf(adId);
+    if (index > -1) {
+        viewedAdsCache.splice(index, 1);
+    }
+    
+    // Add to beginning (most recent)
+    viewedAdsCache.unshift(adId);
+    
+    // Keep only last 50 viewed ads
+    if (viewedAdsCache.length > 50) {
+        viewedAdsCache = viewedAdsCache.slice(0, 50);
     }
 }
 
@@ -411,6 +466,9 @@ function displayMyAds(ads) {
 // Show ad details
 async function showAdDetails(adId) {
     try {
+        // Track this ad as viewed
+        addViewedAd(adId);
+        
         const doc = await db.collection('ads').doc(adId).get();
         if (!doc.exists) return;
         
